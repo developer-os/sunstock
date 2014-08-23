@@ -170,4 +170,15 @@ public class H2StockStorage
     {
         System.out.println(date+"\t"+market+"\t"+capital);
     }
+    
+    public void saveAccountStatus(String date,Map<String,Stock> stocks,float money) throws Exception
+    {
+        System.out.println("==============Final stocks===============");
+        for(Map.Entry<String,Stock> stk:stocks.entrySet())
+        {
+            Stock stock=stk.getValue();
+            System.out.println(stk.getKey()+"\t"+stock.close+"*"+stock.volume+"="+(stock.close*stock.volume));
+        }
+        System.out.println("Money left: "+money);
+    }
 }

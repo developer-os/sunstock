@@ -166,7 +166,6 @@ public class StockDataSource
             if(StringUtils.isBlank(nextLine[2]))
                 continue;
             int count=numberParser.parse(nextLine[2]).intValue();
-            float cost=numberParser.parse(nextLine[5]).floatValue();
             BigDecimal value=new BigDecimal(numberParser.parse(nextLine[7]).toString());
             totalStockValue=totalStockValue.add(value);
             System.out.println(nextLine[0]+"\t"+nextLine[1]+"\t"+count+"\t"+value);
@@ -279,17 +278,17 @@ public class StockDataSource
     
     public void backdateAccountChanges(String from,String to) throws Exception
     {
-        System.out.println("Total account changes: "+accountChanges.size());
+        logger.info("Total account changes from {} to {}: {}",from,to,accountChanges.size());
         Collections.sort(accountChanges);
         Calendar cld=Calendar.getInstance();
         cld.setTime(df.parse(from));
         Calendar cldEnd=Calendar.getInstance();
         cldEnd.setTime(df.parse(to));
         AccountChange nextChange=null;
-        int nextIndex;
-        for(nextIndex=0;nextIndex<accountChanges.size();nextIndex++)
+        int nextIndex=0;
+        while(nextIndex<accountChanges.size())
         {
-            nextChange=accountChanges.get(nextIndex);
+            nextChange=accountChanges.get(nextIndex++);
             if(nextChange.date.compareTo(from)>=0)
                 break;
         }
@@ -300,11 +299,9 @@ public class StockDataSource
             int wkday=cld.get(Calendar.DAY_OF_WEEK);
             if(wkday!=Calendar.SATURDAY&&wkday!=Calendar.SUNDAY)
             {
-                String day=df.format(cld.getTime());
-                //System.out.println("Processing "+day);                
-                while(nextIndex<accountChanges.size()&&day.equals(nextChange.date))//get all changes for the day
-                {
-                    //System.out.println("Account change: "+nextChange);
+                String day=df.format(cld.getTime());               
+                while(day.equals(nextChange.date))//get all changes for the day
+                {                    
                     if(nextChange.code!=null)//stock change
                     {
                         Stock v=currentStock.get(nextChange.code);
@@ -320,13 +317,16 @@ public class StockDataSource
                     {
                         currentMoney=currentMoney.add(nextChange.moneyDelta);
                     }
-                    nextChange=accountChanges.get(nextIndex++);
+                    if(nextIndex>=accountChanges.size())
+                        break;
+                    nextChange=accountChanges.get((nextIndex++));
                 }
                 BigDecimal totalValue=currentMoney.add(getTotalStockValue(day,currentStock));
                 storage.saveCalculatedValues(day, totalValue.floatValue(), getCapitalValue(day).floatValue());
             }
             cld.add(Calendar.DATE, 1);
         }
+        storage.saveAccountStatus(df.format(cld.getTime()), currentStock,currentMoney.floatValue());
     }
     
     protected Map<String,Stock> getStockOnDay(String day)
@@ -358,6 +358,7 @@ public class StockDataSource
             }
             value=value.add(new BigDecimal(stock.close*stock.volume));
         }
+        logger.debug("{} Total stock value: {}",day,value);
         return value;
     }
 }
