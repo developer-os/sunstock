@@ -33,7 +33,6 @@ public class YahooMarketProvider implements MarketProvider
         
         TreeMap<String,TradeSummary> tss=new TreeMap();
         String url=MessageFormat.format(URL_FORMAT,toInternalCode(code),a,b,c,d,e,f);
-        //System.out.println("url="+url);
         String s=webClient.getResponseForGet(url);
         //System.out.println("s="+s);
         StringReader sr=new StringReader(s);

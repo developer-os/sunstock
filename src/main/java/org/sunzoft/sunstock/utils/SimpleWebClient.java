@@ -14,6 +14,7 @@ import org.apache.http.entity.*;
 import org.apache.http.impl.client.*;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.*;
+import org.slf4j.*;
 
 /**
  *
@@ -21,6 +22,7 @@ import org.apache.http.util.*;
  */
 public class SimpleWebClient
 {
+    private static final Logger logger=LoggerFactory.getLogger(SimpleWebClient.class);
     protected CloseableHttpClient client;
     protected Map<String,String> headers;
     protected RequestConfig requestConfig;
@@ -70,6 +72,7 @@ public class SimpleWebClient
      */
     public String getResponseForGet(String url) throws Exception
     {
+        logger.debug("GET: {}",url);
         HttpGet httpget = new HttpGet(url);
         appendHeaders(httpget);
         CloseableHttpResponse response=null;

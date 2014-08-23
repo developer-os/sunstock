@@ -6,6 +6,7 @@ import java.math.*;
 import java.text.*;
 import java.util.*;
 import org.apache.commons.lang3.*;
+import org.slf4j.*;
 import org.sunzoft.sunstock.market.*;
 import org.sunzoft.sunstock.storage.*;
 import org.sunzoft.sunstock.utils.*;
@@ -16,9 +17,10 @@ import org.sunzoft.sunstock.utils.*;
  */
 public class StockDataSource 
 {
+    private static final Logger logger=LoggerFactory.getLogger(StockDataSource.class);
     BigDecimal inMoney=new BigDecimal(0);
     BigDecimal totalStockValue=new BigDecimal(0);
-    BigDecimal calculatedMoney=new BigDecimal(0);
+    BigDecimal calculatedMoney=new BigDecimal("0.000");
         
     NumberFormat numberParser=NumberFormat.getNumberInstance(java.util.Locale.US);
     
@@ -29,6 +31,7 @@ public class StockDataSource
     List<String[]> moneyRecords;
     DateFormat df=new SimpleDateFormat("yyyyMMdd");
     RangeSearcher capitalRange=new RangeSearcher();
+    List<AccountChange> accountChanges=new ArrayList();
     
     public static void main( String[] args ) throws Exception
     {
@@ -38,6 +41,7 @@ public class StockDataSource
         dataSource.readStock();
         dataSource.readTrade();
         System.out.println("总盈亏: "+dataSource.getBalance());
+        dataSource.calculateAllData();
         dataSource.close();
     }
     
@@ -47,29 +51,9 @@ public class StockDataSource
         marketProvider.init();
     }
     
-    public void calculateData() throws Exception
+    public void calculateAllData() throws Exception
     {
-        String startDate=storage.getCalculatedEndDate();
-        if(startDate==null)
-            startDate=getMoneyStartDate();
-        Date startDay=df.parse(startDate);
-        Calendar cldStart=Calendar.getInstance();
-        cldStart.setTime(startDay);
-        Calendar cldEnd=Calendar.getInstance();
-        float index=1.0f;
-        while(cldStart.before(cldEnd))
-        {
-            String date=df.format(cldStart.getTime());
-            BigDecimal market=getMarketValue(date);
-            BigDecimal capital=getCapitalValue(date);
-            cldStart.add(Calendar.DATE, 1);
-            storage.saveCalculatedValues(date,market.floatValue(),capital.floatValue(),index);
-        }
-    }
-    
-    protected BigDecimal getMarketValue(String day) throws Exception
-    {
-        
+        backdateAccountChanges(getMoneyStartDate(),df.format(new Date()));
     }
     
     protected BigDecimal getCapitalValue(String day) throws Exception
@@ -97,6 +81,7 @@ public class StockDataSource
         int lineNum=0;
         moneyRecords=reverseRecords(reader);
         BigDecimal lastMoney=new BigDecimal("0.000");
+        BigDecimal lastCalculatedMoney=new BigDecimal("0.000");
         for(String[] nextLine:moneyRecords)
         {
             BigDecimal curMoney=new BigDecimal("0.000");
@@ -155,6 +140,14 @@ public class StockDataSource
             if(!calculatedMoney.equals(curMoney))
                 System.out.println(moneyRecords.size()-lineNum+1+" - "+nextLine[0]+" - Cal: "+calculatedMoney+"\tAct: "+nextLine[7]);       
             lastMoney=curMoney;
+            if(!lastCalculatedMoney.equals(calculatedMoney))
+            {
+                AccountChange ac=new AccountChange();
+                ac.date=nextLine[0];
+                ac.moneyDelta=calculatedMoney.subtract(lastCalculatedMoney);
+                accountChanges.add(ac);
+            }
+            lastCalculatedMoney=calculatedMoney;
             lineNum++;
         }
         reader.close();
@@ -197,6 +190,7 @@ public class StockDataSource
                 {
                     Integer v=stockHeld.get(line[1]);
                     int currentHeld=(v==null?0:v);
+                    int lastHeld=currentHeld;
                     if("买入".equals(line[3])||"转入".equals(line[3])||"送红股".equals(line[3]))
                     {
                         int cnt=numberParser.parse(line[4]).intValue();
@@ -215,6 +209,21 @@ public class StockDataSource
                         stockHeld.remove(line[1]);
                     else
                         stockHeld.put(line[1], currentHeld);
+                    if(currentHeld!=lastHeld)
+                    {
+                        AccountChange ac=new AccountChange();
+                        ac.date=line[0];
+                        ac.code=line[1];
+                        try
+                        {
+                            ac.price=Float.parseFloat(line[5]);
+                        }
+                        catch (Exception e)
+                        {
+                        }
+                        ac.stockDelta=currentHeld-lastHeld;
+                        accountChanges.add(ac);
+                    }
                 }
             }
         }
@@ -257,11 +266,6 @@ public class StockDataSource
         return lines;
     }
     
-    private String toPublicCode(String code)
-    {
-        return code.substring(2);
-    }
-    
     public BigDecimal getBalance()
     {
         return calculatedMoney.add(totalStockValue).subtract(inMoney);
@@ -273,8 +277,87 @@ public class StockDataSource
         marketProvider.close();
     }
     
-    public void calculateDailyMarketValues(String from,String to) throws Exception
+    public void backdateAccountChanges(String from,String to) throws Exception
     {
-        
+        System.out.println("Total account changes: "+accountChanges.size());
+        Collections.sort(accountChanges);
+        Calendar cld=Calendar.getInstance();
+        cld.setTime(df.parse(from));
+        Calendar cldEnd=Calendar.getInstance();
+        cldEnd.setTime(df.parse(to));
+        AccountChange nextChange=null;
+        int nextIndex;
+        for(nextIndex=0;nextIndex<accountChanges.size();nextIndex++)
+        {
+            nextChange=accountChanges.get(nextIndex);
+            if(nextChange.date.compareTo(from)>=0)
+                break;
+        }
+        Map<String,Stock> currentStock=getStockOnDay(from);
+        BigDecimal currentMoney=getMoneyOnDay(from);
+        while(cld.compareTo(cldEnd)<=0)
+        {
+            int wkday=cld.get(Calendar.DAY_OF_WEEK);
+            if(wkday!=Calendar.SATURDAY&&wkday!=Calendar.SUNDAY)
+            {
+                String day=df.format(cld.getTime());
+                //System.out.println("Processing "+day);                
+                while(nextIndex<accountChanges.size()&&day.equals(nextChange.date))//get all changes for the day
+                {
+                    //System.out.println("Account change: "+nextChange);
+                    if(nextChange.code!=null)//stock change
+                    {
+                        Stock v=currentStock.get(nextChange.code);
+                        if(v==null)
+                            v=new Stock();
+                        v.volume+=nextChange.stockDelta;
+                        if(v.volume==0)
+                            currentStock.remove(nextChange.code);
+                        else
+                            currentStock.put(nextChange.code, v);
+                    }
+                    else//money change
+                    {
+                        currentMoney=currentMoney.add(nextChange.moneyDelta);
+                    }
+                    nextChange=accountChanges.get(nextIndex++);
+                }
+                BigDecimal totalValue=currentMoney.add(getTotalStockValue(day,currentStock));
+                storage.saveCalculatedValues(day, totalValue.floatValue(), getCapitalValue(day).floatValue());
+            }
+            cld.add(Calendar.DATE, 1);
+        }
+    }
+    
+    protected Map<String,Stock> getStockOnDay(String day)
+    {
+        //todo: implement for specific day
+        return new HashMap<String,Stock>();
+    }
+    
+    protected BigDecimal getMoneyOnDay(String day)
+    {
+        //todo: implement for specific day
+        return new BigDecimal("0.000");
+    }    
+    
+    protected BigDecimal getTotalStockValue(String day,Map<String,Stock> stocks) throws Exception
+    {
+        //System.out.println("stock count: "+stocks.size());
+        BigDecimal value=new BigDecimal("0.000");
+        for(Map.Entry<String,Stock> stk:stocks.entrySet())
+        {
+            Stock stock=stk.getValue();
+            try
+            {
+                stock.close=getDayTrade(stk.getKey(),day).close;
+            }
+            catch (Exception e)
+            {                
+                logger.warn("Failed to get stock price for "+day+" - "+stk.getKey(), e);
+            }
+            value=value.add(new BigDecimal(stock.close*stock.volume));
+        }
+        return value;
     }
 }

@@ -10,11 +10,7 @@ package org.sunzoft.sunstock;
  *
  * @author sunzhu
  */
-public class Stock
+public class AccountChangeTracer
 {
-    public String code;
-    public String name;
-    public int volume;
-    public float open;
-    public float close;
+    
 }

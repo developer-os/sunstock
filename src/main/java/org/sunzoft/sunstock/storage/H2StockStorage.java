@@ -166,7 +166,7 @@ public class H2StockStorage
         return day;
     }
     
-    public void saveCalculatedValues(String date,float market,float capital,float index) throws Exception
+    public void saveCalculatedValues(String date,float market,float capital) throws Exception
     {
         System.out.println(date+"\t"+market+"\t"+capital);
     }
