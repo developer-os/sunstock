@@ -129,16 +129,17 @@ public class StockDataSource
             }
             else if("新股申购".equals(nextLine[1]))
             {
-                calculatedMoney=calculatedMoney.subtract(new BigDecimal(nextLine[6]));
+                //calculatedMoney=calculatedMoney.subtract(new BigDecimal(nextLine[6]));
             }
             else if("申购还款".equals(nextLine[1]))
             {
-                calculatedMoney=calculatedMoney.add(new BigDecimal(nextLine[6]));
+                //calculatedMoney=calculatedMoney.add(new BigDecimal(nextLine[6]));
             }
             else
                 System.out.println(moneyRecords.size()-lineNum+1+" - Unknow operation: "+nextLine[1]);
+            /*
             if(!calculatedMoney.equals(curMoney))
-                System.out.println(moneyRecords.size()-lineNum+1+" - "+nextLine[0]+" - Cal: "+calculatedMoney+"\tAct: "+nextLine[7]);       
+                System.out.println(moneyRecords.size()-lineNum+1+" - "+nextLine[0]+" - Cal: "+calculatedMoney+"\tAct: "+nextLine[7]);   */    
             lastMoney=curMoney;
             if(!lastCalculatedMoney.equals(calculatedMoney))
             {
