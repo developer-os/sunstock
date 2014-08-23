@@ -41,7 +41,8 @@ public class StockDataSource
         dataSource.readStock();
         dataSource.readTrade();
         System.out.println("总盈亏: "+dataSource.getBalance());
-        dataSource.calculateAllData();
+        //dataSource.calculateAllAccountData();
+        dataSource.calculateAccountData();
         dataSource.close();
     }
     
@@ -51,9 +52,23 @@ public class StockDataSource
         marketProvider.init();
     }
     
-    public void calculateAllData() throws Exception
+    public void calculateAllAccountData() throws Exception
     {
         backdateAccountChanges(getMoneyStartDate(),df.format(new Date()));
+    }
+    
+    public void calculateAccountData() throws Exception
+    {
+        String start=storage.getLastAccountDate();
+        String end=df.format(new Date());
+        if(start==null)
+            start=getMoneyStartDate();
+        if(start.compareTo(end)>=0)
+        {
+            logger.info("Start date {} is not earlier than today. No need to do any account calculation.",start);
+            return;
+        }
+        backdateAccountChanges(start,end);
     }
     
     protected BigDecimal getCapitalValue(String day) throws Exception
@@ -75,6 +90,7 @@ public class StockDataSource
         storage.saveTradeSummary(date, ts);
         return ts;
     }
+    
     public void readMoney() throws Exception
     {
         CSVReader reader = new CSVReader(new FileReader("data/money.xls"),'\t','"', 1);
@@ -293,8 +309,8 @@ public class StockDataSource
             if(nextChange.date.compareTo(from)>=0)
                 break;
         }
-        Map<String,Stock> currentStock=getStockOnDay(from);
-        BigDecimal currentMoney=getMoneyOnDay(from);
+        Map<String,Stock> currentStock=storage.getStockHeld(from);
+        BigDecimal currentMoney=new BigDecimal(storage.getAccountCash(from));
         while(cld.compareTo(cldEnd)<=0)
         {
             int wkday=cld.get(Calendar.DAY_OF_WEEK);
@@ -327,20 +343,9 @@ public class StockDataSource
             }
             cld.add(Calendar.DATE, 1);
         }
-        storage.saveAccountStatus(df.format(cld.getTime()), currentStock,currentMoney.floatValue());
+        storage.saveAccountStatus(to, currentStock);
+        storage.saveAccountCash(to, currentMoney.floatValue());
     }
-    
-    protected Map<String,Stock> getStockOnDay(String day)
-    {
-        //todo: implement for specific day
-        return new HashMap<String,Stock>();
-    }
-    
-    protected BigDecimal getMoneyOnDay(String day)
-    {
-        //todo: implement for specific day
-        return new BigDecimal("0.000");
-    }    
     
     protected BigDecimal getTotalStockValue(String day,Map<String,Stock> stocks) throws Exception
     {

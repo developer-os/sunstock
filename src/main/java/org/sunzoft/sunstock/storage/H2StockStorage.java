@@ -17,41 +17,44 @@ import java.sql.*;
 public class H2StockStorage
 {
     private static final String TB_QUOTA_DAY="quota_day";
-    private static final String TB_STATUS="status";
-    private static final String TB_DAILY_VALUE="daily_value";
+    private static final String TB_ACCOUNT_CASH="account_cash";
+    private static final String TB_ACCOUNT_STATUS="account_status";
+    private static final String TB_STOCK_HELD="stock_held";
     Connection con;
-    PreparedStatement insertStmt;
-    PreparedStatement getStmt;
-    PreparedStatement getLastDateStmt;
+    PreparedStatement stmtSaveStockDailyQuota;
+    PreparedStatement stmtGetStockQuota;
+    PreparedStatement stmtGetMaxStatusDate;
+    PreparedStatement stmtSaveAccountStatus;
+    PreparedStatement stmtSaveStockHeld;
+    PreparedStatement stmtGetStockHeld;
+    PreparedStatement stmtSaveAccountCash;
+    PreparedStatement stmtGetAccountCash;
     
     public void init() throws Exception
     {
         Class.forName("org.h2.Driver");
         con=DriverManager.getConnection("jdbc:h2:./data/sunstock");
         createTableIfNeeded();        
-        insertStmt=con.prepareStatement("insert into "+TB_QUOTA_DAY+" values(?,?,?,?,?,?,?)");
-        getStmt=con.prepareStatement("select day,open,close,hight,low,volumn from "+TB_QUOTA_DAY+" where code=? and day>=? and day<=? order by day");
-        getLastDateStmt=con.prepareStatement("select max(day) from "+TB_DAILY_VALUE);
+        stmtSaveStockDailyQuota=con.prepareStatement("insert into "+TB_QUOTA_DAY+" values(?,?,?,?,?,?,?)");
+        stmtGetStockQuota=con.prepareStatement("select day,open,close,hight,low,volume from "+TB_QUOTA_DAY+" where code=? and day>=? and day<=? order by day");
+        stmtGetMaxStatusDate=con.prepareStatement("select max(day) from "+TB_ACCOUNT_CASH);
+        stmtSaveAccountStatus=con.prepareStatement("insert into "+TB_ACCOUNT_STATUS+" values(?,?,?)");
+        stmtSaveStockHeld=con.prepareStatement("insert into "+TB_STOCK_HELD+" values(?,?,?,?)");
+        stmtGetStockHeld=con.prepareStatement("select code,close,volume from "+TB_STOCK_HELD+" where day=?");
+        stmtSaveAccountCash=con.prepareStatement("insert into "+TB_ACCOUNT_CASH+" values(?,?)");
+        stmtGetAccountCash=con.prepareStatement("select cash from "+TB_ACCOUNT_CASH+" where day=?");
     }
     
     public void close()
     {
-        try
-        {
-            if(insertStmt!=null)
-                insertStmt.close();
-        }
-        catch (Exception e)
-        {
-        }
-        try
-        {
-            if(getStmt!=null)
-                getStmt.close();
-        }
-        catch (Exception e)
-        {
-        }
+        closeStatement(stmtSaveStockDailyQuota);
+        closeStatement(stmtGetStockQuota);
+        closeStatement(stmtGetMaxStatusDate);
+        closeStatement(stmtSaveAccountStatus);
+        closeStatement(stmtSaveStockHeld);
+        closeStatement(stmtGetStockHeld);
+        closeStatement(stmtSaveAccountCash);
+        closeStatement(stmtGetAccountCash);
         try
         {
             if(con!=null)
@@ -59,6 +62,19 @@ public class H2StockStorage
         }
         catch (Exception e)
         {
+        }
+    }
+    
+    protected void closeStatement(Statement stmt)
+    {
+        try
+        {
+            if(stmt!=null)
+                stmt.close();
+        }
+        catch (Exception e)
+        {
+            //do nothing
         }
     }
     
@@ -72,20 +88,27 @@ public class H2StockStorage
                      " close real, " +  
                      " hight real, " +  
                      " low real, " + 
-                     " volumn INTEGER, " + 
+                     " volume INTEGER, " + 
                      " PRIMARY KEY (code,day))";
         stmt.executeUpdate(sql);
-        sql = "create table if not exists "+TB_STATUS +
-                     "(stat_key varchar(20), " +
-                     " stat_value varchar(50), "+
-                     " PRIMARY KEY (stat_key))";
+        sql = "create table if not exists "+TB_ACCOUNT_CASH +
+                     "(day CHAR(8)," +
+                     " cash real, "+
+                     " PRIMARY KEY (day))";
         stmt.executeUpdate(sql);
-        sql = "create table if not exists "+TB_DAILY_VALUE +
+        sql = "create table if not exists "+TB_ACCOUNT_STATUS +
                      "(day CHAR(8), " +
                      " market_value real, "+
                      " capital_value real, "+
-                     " index_value real, "+
                      " PRIMARY KEY (day))";
+        stmt.executeUpdate(sql);
+        sql = "create table if not exists "+TB_STOCK_HELD +
+                     "(day CHAR(8), " +
+                     " code varchar(10), " +
+                     " close real, "+
+                     " volume integer)";
+        stmt.executeUpdate(sql);
+        sql = "create index if not exists "+TB_STOCK_HELD+"_IDX1 on "+TB_STOCK_HELD+"(day)";
         stmt.executeUpdate(sql);
         stmt.close();
     }
@@ -100,14 +123,14 @@ public class H2StockStorage
     
     public void saveTradeSummary(String date, TradeSummary t) throws Exception
     {
-        insertStmt.setString(1, t.code);
-        insertStmt.setString(2, date);
-        insertStmt.setFloat(3, t.open);
-        insertStmt.setFloat(4, t.close);
-        insertStmt.setFloat(5, t.high);
-        insertStmt.setFloat(6, t.low);
-        insertStmt.setInt(7, t.volumn);
-        insertStmt.executeUpdate();
+        stmtSaveStockDailyQuota.setString(1, t.code);
+        stmtSaveStockDailyQuota.setString(2, date);
+        stmtSaveStockDailyQuota.setFloat(3, t.open);
+        stmtSaveStockDailyQuota.setFloat(4, t.close);
+        stmtSaveStockDailyQuota.setFloat(5, t.high);
+        stmtSaveStockDailyQuota.setFloat(6, t.low);
+        stmtSaveStockDailyQuota.setInt(7, t.volumn);
+        stmtSaveStockDailyQuota.executeUpdate();
     }
     
     /**
@@ -122,10 +145,10 @@ public class H2StockStorage
     {
         SortedMap<String,TradeSummary> trades=new TreeMap<String,TradeSummary>();
         
-        getStmt.setString(1, code);
-        getStmt.setString(2, from);
-        getStmt.setString(3, to);
-        ResultSet rs=getStmt.executeQuery();
+        stmtGetStockQuota.setString(1, code);
+        stmtGetStockQuota.setString(2, from);
+        stmtGetStockQuota.setString(3, to);
+        ResultSet rs=stmtGetStockQuota.executeQuery();
         while(rs.next())
         {
             TradeSummary t=new TradeSummary();
@@ -156,10 +179,10 @@ public class H2StockStorage
         return (TradeSummary)trades.values().toArray()[0];
     }
     
-    public String getCalculatedEndDate() throws Exception
+    public String getLastAccountDate() throws Exception
     {
         String day=null;
-        ResultSet rs=getLastDateStmt.executeQuery();
+        ResultSet rs=stmtGetMaxStatusDate.executeQuery();
         if(rs.next())
             day=rs.getString(1);
         rs.close();
@@ -169,16 +192,60 @@ public class H2StockStorage
     public void saveCalculatedValues(String date,float market,float capital) throws Exception
     {
         System.out.println(date+"\t"+market+"\t"+capital);
+        stmtSaveAccountStatus.setString(1, date);
+        stmtSaveAccountStatus.setFloat(2, market);
+        stmtSaveAccountStatus.setFloat(3, capital);
+        stmtSaveAccountStatus.executeUpdate();
     }
     
-    public void saveAccountStatus(String date,Map<String,Stock> stocks,float money) throws Exception
+    public void saveAccountStatus(String date,Map<String,Stock> stocks) throws Exception
     {
         System.out.println("==============Final stocks===============");
         for(Map.Entry<String,Stock> stk:stocks.entrySet())
         {
             Stock stock=stk.getValue();
             System.out.println(stk.getKey()+"\t"+stock.close+"*"+stock.volume+"="+(stock.close*stock.volume));
+            stmtSaveStockHeld.setString(1, date);
+            stmtSaveStockHeld.setString(2, stk.getKey());
+            stmtSaveStockHeld.setFloat(3, stock.close);
+            stmtSaveStockHeld.setInt(4, stock.volume);
+            stmtSaveStockHeld.executeUpdate();
         }
+    }
+    
+    public Map<String,Stock> getStockHeld(String date) throws Exception
+    {
+        Map<String,Stock> stocks=new HashMap<String,Stock>();        
+        stmtGetStockHeld.setString(1, date);
+        ResultSet rs=stmtGetStockHeld.executeQuery();
+        while(rs.next())
+        {
+            Stock t=new Stock();
+            t.code=rs.getString(1);
+            t.close=rs.getFloat(2);
+            t.volume=rs.getInt(3);
+            stocks.put(t.code, t);
+        }
+        rs.close();
+        return stocks;
+    }
+    
+    public void saveAccountCash(String date,float money) throws Exception
+    {
+        stmtSaveAccountCash.setString(1, date);
+        stmtSaveAccountCash.setFloat(2, money);
+        stmtSaveAccountCash.executeUpdate();
         System.out.println("Money left: "+money);
+    }
+    
+    public float getAccountCash(String date) throws Exception
+    {
+        stmtGetAccountCash.setString(1, date);
+        ResultSet rs=stmtGetAccountCash.executeQuery();
+        float cash=0;
+        if(rs.next())
+            cash=rs.getFloat(1);
+        rs.close();
+        return cash;
     }
 }
