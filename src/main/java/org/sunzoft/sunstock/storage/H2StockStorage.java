@@ -29,6 +29,7 @@ public class H2StockStorage
     PreparedStatement stmtGetStockHeld;
     PreparedStatement stmtSaveAccountCash;
     PreparedStatement stmtGetAccountCash;
+    PreparedStatement stmtGetDailyProfit;
     
     public void init() throws Exception
     {
@@ -43,6 +44,7 @@ public class H2StockStorage
         stmtGetStockHeld=con.prepareStatement("select code,close,volume from "+TB_STOCK_HELD+" where day=?");
         stmtSaveAccountCash=con.prepareStatement("insert into "+TB_ACCOUNT_CASH+" values(?,?)");
         stmtGetAccountCash=con.prepareStatement("select cash from "+TB_ACCOUNT_CASH+" where day=?");
+        stmtGetDailyProfit=con.prepareStatement("select day,(market_value-capital_value) from "+TB_ACCOUNT_STATUS+" where day>=? and day<=? order by day");
     }
     
     public void close()
@@ -55,6 +57,7 @@ public class H2StockStorage
         closeStatement(stmtGetStockHeld);
         closeStatement(stmtSaveAccountCash);
         closeStatement(stmtGetAccountCash);
+        closeStatement(stmtGetDailyProfit);
         try
         {
             if(con!=null)
@@ -247,5 +250,22 @@ public class H2StockStorage
             cash=rs.getFloat(1);
         rs.close();
         return cash;
+    }
+    
+    public List<TimeData> getDailyProfit(String start,String end) throws Exception
+    {
+        List<TimeData> data=new ArrayList();
+        stmtGetDailyProfit.setString(1, start);
+        stmtGetDailyProfit.setString(2, end);
+        ResultSet rs=stmtGetDailyProfit.executeQuery();
+        while(rs.next())
+        {
+            TimeData d=new TimeData();
+            d.date=rs.getString(1);
+            d.value=rs.getFloat(2);
+            data.add(d);
+        }
+        rs.close();
+        return data;
     }
 }

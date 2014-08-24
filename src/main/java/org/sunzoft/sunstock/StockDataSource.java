@@ -456,4 +456,9 @@ public class StockDataSource
         logger.debug("{} Total stock value: {}",day,value);
         return value;
     }
+    
+    public List<TimeData> getDailyProfit(String start,String end) throws Exception
+    {
+        return storage.getDailyProfit(start,end);
+    }
 }

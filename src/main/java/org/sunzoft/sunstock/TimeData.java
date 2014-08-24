@@ -10,7 +10,8 @@ package org.sunzoft.sunstock;
  *
  * @author sunzhu
  */
-public class AccountChangeTracer
+public class TimeData
 {
-    
+    public String date;
+    public float value;
 }
