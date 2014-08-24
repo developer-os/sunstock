@@ -33,6 +33,9 @@ public class StockDataSource
     RangeSearcher capitalRange=new RangeSearcher();
     List<AccountChange> accountChanges=new ArrayList();
     
+    Map<String,Stock> currentStock;
+    BigDecimal currentMoney;
+    
     public static void main( String[] args ) throws Exception
     {
         StockDataSource dataSource=new StockDataSource();
@@ -46,17 +49,29 @@ public class StockDataSource
         dataSource.close();
     }
     
+    /**
+     * 初始化
+     * @throws Exception 
+     */
     public void init() throws Exception
     {
         storage.init();
         marketProvider.init();
     }
     
+    /**
+     * 重新计算账户所有数据
+     * @throws Exception 
+     */
     public void calculateAllAccountData() throws Exception
     {
         backdateAccountChanges(getMoneyStartDate(),df.format(new Date()));
     }
     
+    /**
+     * 计算账户增量数据
+     * @throws Exception 
+     */
     public void calculateAccountData() throws Exception
     {
         String start=storage.getLastAccountDate();
@@ -68,19 +83,41 @@ public class StockDataSource
             logger.info("Start date {} is not earlier than today. No need to do any account calculation.",start);
             return;
         }
+        currentStock=storage.getStockHeld(start);
+        currentMoney=new BigDecimal(storage.getAccountCash(start));
         backdateAccountChanges(start,end);
+        saveAccountStatus(end);
     }
     
+    /**
+     * 获取历史任意一天的实际成本
+     * @param day
+     * @return
+     * @throws Exception 
+     */
     protected BigDecimal getCapitalValue(String day) throws Exception
     {
         return capitalRange.getValue(day);
     }
     
+    /**
+     * 获取交易流水的起始日期
+     * @return
+     * @throws Exception 
+     */
     protected String getMoneyStartDate() throws Exception
     {
         return moneyRecords.get(0)[0];
     }
     
+    /**
+     * 获取股票的日线信息
+     * 如果本地有，则直接返回本地记录。如果本地没有，从网络获取并保存到本地记录。
+     * @param code
+     * @param date
+     * @return
+     * @throws Exception 
+     */
     public TradeSummary getDayTrade(String code,String date) throws Exception
     {
         TradeSummary ts=storage.getTradeSummary(code, date);
@@ -91,6 +128,10 @@ public class StockDataSource
         return ts;
     }
     
+    /**
+     * 读取资金流水
+     * @throws Exception 
+     */
     public void readMoney() throws Exception
     {
         CSVReader reader = new CSVReader(new FileReader("data/money.xls"),'\t','"', 1);
@@ -173,6 +214,10 @@ public class StockDataSource
         System.out.println("计算剩余资金: "+calculatedMoney);
     }
     
+    /**
+     * 读取股票持仓
+     * @throws Exception 
+     */
     public void readStock() throws Exception
     {
         CSVReader reader = new CSVReader(new FileReader("data/stock.xls"),'\t','"', 1);
@@ -192,6 +237,10 @@ public class StockDataSource
         System.out.println("股票总市值: "+totalStockValue);
     }
     
+    /**
+     * 读取交易流水
+     * @throws Exception 
+     */
     public void readTrade() throws Exception
     {
         CSVReader reader = new CSVReader(new FileReader("data/trade.xls"),'\t','"', 1);
@@ -248,6 +297,12 @@ public class StockDataSource
             System.out.println(code+"\t"+stockHeld.get(code));
     }
     
+    /**
+     * 顺排序记录
+     * @param reader
+     * @return
+     * @throws Exception 
+     */
     private SortedMap<String,List<String[]>> sortRecords(CSVReader reader) throws Exception
     {
         String[] nextLine;
@@ -270,6 +325,13 @@ public class StockDataSource
         return sortMap;
     }
     
+    /**
+     * 逆序记录
+     * 由于excel里的记录是倒排序的，调用一次这个方法以后相当于正排序
+     * @param reader
+     * @return
+     * @throws Exception 
+     */
     private List<String[]> reverseRecords(CSVReader reader) throws Exception
     {
         String[] nextLine;
@@ -282,17 +344,30 @@ public class StockDataSource
         return lines;
     }
     
+    /**
+     * 获取最终盈亏
+     * @return 
+     */
     public BigDecimal getBalance()
     {
         return calculatedMoney.add(totalStockValue).subtract(inMoney);
     }
     
+    /**
+     * 关闭资源
+     */
     public void close()
     {
         storage.close();
         marketProvider.close();
     }
     
+    /**
+     * 回溯各种交易及资金流水，获得每日的资金及股票持仓状态
+     * @param from
+     * @param to
+     * @throws Exception 
+     */
     public void backdateAccountChanges(String from,String to) throws Exception
     {
         logger.info("Total account changes from {} to {}: {}",from,to,accountChanges.size());
@@ -309,8 +384,6 @@ public class StockDataSource
             if(nextChange.date.compareTo(from)>=0)
                 break;
         }
-        Map<String,Stock> currentStock=storage.getStockHeld(from);
-        BigDecimal currentMoney=new BigDecimal(storage.getAccountCash(from));
         while(cld.compareTo(cldEnd)<=0)
         {
             int wkday=cld.get(Calendar.DAY_OF_WEEK);
@@ -343,10 +416,26 @@ public class StockDataSource
             }
             cld.add(Calendar.DATE, 1);
         }
-        storage.saveAccountStatus(to, currentStock);
-        storage.saveAccountCash(to, currentMoney.floatValue());
     }
     
+    /**
+     * 保存计算的账户最终状态
+     * @param day
+     * @throws Exception 
+     */
+    public void saveAccountStatus(String day) throws Exception
+    {        
+        storage.saveAccountStatus(day, currentStock);
+        storage.saveAccountCash(day, currentMoney.floatValue());
+    }
+    
+    /**
+     * 计算股票市值
+     * @param day
+     * @param stocks
+     * @return
+     * @throws Exception 
+     */
     protected BigDecimal getTotalStockValue(String day,Map<String,Stock> stocks) throws Exception
     {
         //System.out.println("stock count: "+stocks.size());
