@@ -14,7 +14,7 @@ import org.sunzoft.sunstock.*;
 import org.sunzoft.sunstock.utils.*;
 
 /**
- * 缺点：速度慢，成交量可能不准确，无交易日也有数据
+ * 缺点：速度慢，成交量可能不准确，无交易日也有数据；ETF基金的历史价格不准确
  * @author sunzhu
  */
 public class YahooMarketProvider implements MarketProvider

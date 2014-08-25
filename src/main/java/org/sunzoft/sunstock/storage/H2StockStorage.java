@@ -30,6 +30,9 @@ public class H2StockStorage
     PreparedStatement stmtSaveAccountCash;
     PreparedStatement stmtGetAccountCash;
     PreparedStatement stmtGetDailyProfit;
+    PreparedStatement stmtDelAccountStatus;
+    PreparedStatement stmtDelAccountCash;
+    PreparedStatement stmtDelAccountStock;
     
     public void init() throws Exception
     {
@@ -45,6 +48,9 @@ public class H2StockStorage
         stmtSaveAccountCash=con.prepareStatement("insert into "+TB_ACCOUNT_CASH+" values(?,?)");
         stmtGetAccountCash=con.prepareStatement("select cash from "+TB_ACCOUNT_CASH+" where day=?");
         stmtGetDailyProfit=con.prepareStatement("select day,(market_value-capital_value) from "+TB_ACCOUNT_STATUS+" where day>=? and day<=? order by day");
+        stmtDelAccountStatus=con.prepareStatement("delete from "+TB_ACCOUNT_STATUS+" where day>?");
+        stmtDelAccountCash=con.prepareStatement("delete from "+TB_ACCOUNT_CASH+" where day>?");
+        stmtDelAccountStock=con.prepareStatement("delete from "+TB_STOCK_HELD+" where day>?");
     }
     
     public void close()
@@ -58,6 +64,9 @@ public class H2StockStorage
         closeStatement(stmtSaveAccountCash);
         closeStatement(stmtGetAccountCash);
         closeStatement(stmtGetDailyProfit);
+        closeStatement(stmtDelAccountStatus);
+        closeStatement(stmtDelAccountCash);
+        closeStatement(stmtDelAccountStock);
         try
         {
             if(con!=null)
@@ -192,7 +201,7 @@ public class H2StockStorage
         return day;
     }
     
-    public void saveCalculatedValues(String date,float market,float capital) throws Exception
+    public void saveAccountStatus(String date,float market,float capital) throws Exception
     {
         System.out.println(date+"\t"+market+"\t"+capital);
         stmtSaveAccountStatus.setString(1, date);
@@ -201,7 +210,7 @@ public class H2StockStorage
         stmtSaveAccountStatus.executeUpdate();
     }
     
-    public void saveAccountStatus(String date,Map<String,Stock> stocks) throws Exception
+    public void saveAccountStocks(String date,Map<String,Stock> stocks) throws Exception
     {
         System.out.println("==============Final stocks===============");
         for(Map.Entry<String,Stock> stk:stocks.entrySet())
@@ -267,5 +276,15 @@ public class H2StockStorage
         }
         rs.close();
         return data;
+    }
+    
+    public void clearAccountStatusAfter(String lastDate) throws Exception
+    {
+        stmtDelAccountStatus.setString(1, lastDate);
+        stmtDelAccountStatus.executeUpdate();
+        stmtDelAccountCash.setString(1, lastDate);
+        stmtDelAccountCash.executeUpdate();
+        stmtDelAccountStock.setString(1, lastDate);
+        stmtDelAccountStock.executeUpdate();
     }
 }

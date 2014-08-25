@@ -25,7 +25,7 @@ public class StockDataSource
     NumberFormat numberParser=NumberFormat.getNumberInstance(java.util.Locale.US);
     
     H2StockStorage storage=new H2StockStorage();
-    MarketProvider marketProvider=new YahooMarketProvider();
+    MarketProvider marketProvider=new SinaMarketProvider();//new YahooMarketProvider();
     
     Map<String,Integer> stockHeld=new HashMap<String,Integer>();
     List<String[]> moneyRecords;
@@ -44,8 +44,8 @@ public class StockDataSource
         dataSource.readStock();
         dataSource.readTrade();
         System.out.println("总盈亏: "+dataSource.getBalance());
-        //dataSource.calculateAllAccountData();
-        dataSource.calculateAccountData();
+        dataSource.calculateAllAccountData();
+        //dataSource.calculateAccountData();
         dataSource.close();
     }
     
@@ -65,7 +65,11 @@ public class StockDataSource
      */
     public void calculateAllAccountData() throws Exception
     {
+        currentStock=new HashMap<String,Stock>();    
+        currentMoney=new BigDecimal("0.000");
+        storage.clearAccountStatusAfter("19900101");
         backdateAccountChanges(getMoneyStartDate(),df.format(new Date()));
+        saveAccountStatus(getMoneyEndDate());
     }
     
     /**
@@ -74,17 +78,26 @@ public class StockDataSource
      */
     public void calculateAccountData() throws Exception
     {
-        String start=storage.getLastAccountDate();
+        String lastStatusDate=storage.getLastAccountDate();
+        if(lastStatusDate==null)
+        {
+            calculateAllAccountData();
+            return;
+        }
         String end=df.format(new Date());
-        if(start==null)
-            start=getMoneyStartDate();
+        String lastRecordDate=getMoneyEndDate();        
+        storage.clearAccountStatusAfter(lastRecordDate);
+        Calendar cld = Calendar.getInstance();
+        cld.setTime(df.parse(lastRecordDate));
+        cld.add(Calendar.DATE, 1);
+        String start = df.format(cld.getTime());
         if(start.compareTo(end)>=0)
         {
             logger.info("Start date {} is not earlier than today. No need to do any account calculation.",start);
             return;
         }
-        currentStock=storage.getStockHeld(start);
-        currentMoney=new BigDecimal(storage.getAccountCash(start));
+        currentStock=storage.getStockHeld(lastRecordDate);
+        currentMoney=new BigDecimal(storage.getAccountCash(lastRecordDate));
         backdateAccountChanges(start,end);
         saveAccountStatus(end);
     }
@@ -108,6 +121,16 @@ public class StockDataSource
     protected String getMoneyStartDate() throws Exception
     {
         return moneyRecords.get(0)[0];
+    }
+    
+    /**
+     * 获取交易流水的最后日期
+     * @return
+     * @throws Exception 
+     */
+    protected String getMoneyEndDate() throws Exception
+    {
+        return moneyRecords.get(moneyRecords.size()-1)[0];
     }
     
     /**
@@ -412,7 +435,7 @@ public class StockDataSource
                     nextChange=accountChanges.get((nextIndex++));
                 }
                 BigDecimal totalValue=currentMoney.add(getTotalStockValue(day,currentStock));
-                storage.saveCalculatedValues(day, totalValue.floatValue(), getCapitalValue(day).floatValue());
+                storage.saveAccountStatus(day, totalValue.floatValue(), getCapitalValue(day).floatValue());
             }
             cld.add(Calendar.DATE, 1);
         }
@@ -425,7 +448,7 @@ public class StockDataSource
      */
     public void saveAccountStatus(String day) throws Exception
     {        
-        storage.saveAccountStatus(day, currentStock);
+        storage.saveAccountStocks(day, currentStock);
         storage.saveAccountCash(day, currentMoney.floatValue());
     }
     
