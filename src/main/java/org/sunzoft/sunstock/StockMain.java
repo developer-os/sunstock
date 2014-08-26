@@ -8,6 +8,8 @@ package org.sunzoft.sunstock;
 import java.awt.*;
 import java.awt.event.*;
 import java.text.*;
+import java.util.*;
+import java.util.*;
 import javax.swing.*;
 import org.jfree.chart.*;
 import org.jfree.chart.axis.*;
@@ -53,7 +55,8 @@ public class StockMain implements ActionListener
         //System.out.println("总盈亏: "+dataSource.getBalance());
         //dataSource.calculateAllAccountData();
         dataSource.calculateAccountData();
-        profits = dataSource.getDailyProfit("20140101", "20140901");
+        Calendar cld=Calendar.getInstance();        
+        profits = dataSource.getDailyProfit(cld.get(Calendar.YEAR)+"0101", cld.get(Calendar.YEAR)+"1231");
     }
 
     protected void initGUI()
