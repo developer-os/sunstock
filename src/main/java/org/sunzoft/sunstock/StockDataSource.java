@@ -94,9 +94,9 @@ public class StockDataSource
         cld.setTime(df.parse(lastRecordDate));
         cld.add(Calendar.DATE, 1);
         String start = df.format(cld.getTime());
-        if(start.compareTo(end)>=0)
+        if(start.compareTo(end)>0)
         {
-            logger.info("Start date {} is not earlier than today. No need to do any account calculation.",start);
+            logger.info("Start date {} is later than today. No need to do any account calculation.",start);
             return;
         }
         currentStock=storage.getStockHeld(lastRecordDate);
