@@ -84,10 +84,13 @@ public class StockDataSource
             calculateAllAccountData();
             return;
         }
-        String end=df.format(new Date());
+        Calendar cld = Calendar.getInstance();
+        if(cld.get(Calendar.HOUR_OF_DAY)<18)
+            cld.add(Calendar.DATE, -1);
+        String end=df.format(cld.getTime());
         String lastRecordDate=getMoneyEndDate();        
         storage.clearAccountStatusAfter(lastRecordDate);
-        Calendar cld = Calendar.getInstance();
+        cld = Calendar.getInstance();
         cld.setTime(df.parse(lastRecordDate));
         cld.add(Calendar.DATE, 1);
         String start = df.format(cld.getTime());
