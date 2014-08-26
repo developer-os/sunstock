@@ -139,9 +139,9 @@ public class StockMain implements ActionListener
         DateTickUnit dateTickUnit = null;
         if (dataset.getItemCount(0) < 30)
             dateTickUnit = new DateTickUnit(DateTickUnitType.DAY, 5, new SimpleDateFormat("yyyy-MM-dd")); // 第二个参数是时间轴间距
-        else if (dataset.getItemCount(0)< 120)
+        else if (dataset.getItemCount(0)< 130)
             dateTickUnit = new DateTickUnit(DateTickUnitType.MONTH, 1, new SimpleDateFormat("yyyy/MM")); // 第二个参数是时间轴间距
-        else if (dataset.getItemCount(0)< 240)
+        else if (dataset.getItemCount(0)< 260)
             dateTickUnit = new DateTickUnit(DateTickUnitType.MONTH, 3, new SimpleDateFormat("yyyy/MM")); // 第二个参数是时间轴间距
         else
             dateTickUnit = new DateTickUnit(DateTickUnitType.MONTH, 6, new SimpleDateFormat("yyyy/MM")); // 第二个参数是时间轴间距
