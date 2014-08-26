@@ -437,7 +437,7 @@ public class StockDataSource
                         break;
                     nextChange=accountChanges.get((nextIndex++));
                 }
-                BigDecimal totalValue=currentMoney.add(getTotalStockValue(day,currentStock));
+                BigDecimal totalValue=currentMoney.add(getTotalStockValue(day,currentStock,nextChange));
                 storage.saveAccountStatus(day, totalValue.floatValue(), getCapitalValue(day).floatValue());
             }
             cld.add(Calendar.DATE, 1);
@@ -459,10 +459,11 @@ public class StockDataSource
      * 计算股票市值
      * @param day
      * @param stocks
+     * @param change
      * @return
      * @throws Exception 
      */
-    protected BigDecimal getTotalStockValue(String day,Map<String,Stock> stocks) throws Exception
+    protected BigDecimal getTotalStockValue(String day,Map<String,Stock> stocks,AccountChange change) throws Exception
     {
         //System.out.println("stock count: "+stocks.size());
         BigDecimal value=new BigDecimal("0.000");
@@ -477,6 +478,8 @@ public class StockDataSource
             {                
                 logger.warn("Failed to get stock price for "+day+" - "+stk.getKey(), e);
             }
+            if(stock.close==0&&stk.getKey().equals(change.code))
+                stock.close=change.price;
             value=value.add(new BigDecimal(stock.close*stock.volume));
         }
         logger.debug("{} Total stock value: {}",day,value);

@@ -30,6 +30,7 @@ public class StockMain implements ActionListener
     java.util.List<TimeData> profits;
     JTextField startInput = new JTextField();
     JTextField endInput = new JTextField();
+    JLabel statusLabel;
     ChartPanel chartPanel;
 
     public static void main(String[] args) throws Exception
@@ -95,12 +96,18 @@ public class StockMain implements ActionListener
                 pCtrl.add(new JLabel("起始："));
                 pCtrl.add(startInput);
                 pCtrl.add(new JLabel("终止："));
-                pCtrl.add(endInput);
-                
+                pCtrl.add(endInput);                
                 JButton confirm = new JButton("刷新");
                 confirm.addActionListener(StockMain.this);
                 pCtrl.add(confirm);
                 contentPane.add(pCtrl, BorderLayout.NORTH);
+                
+                JPanel pStatus = new JPanel();
+                statusLabel=new JLabel("起始日盈利："+profits.get(0).value
+                        +"，终止日盈利："+profits.get(profits.size()-1).value
+                        +"，本阶段盈利："+(profits.get(profits.size()-1).value-profits.get(0).value));
+                pStatus.add(statusLabel);
+                contentPane.add(pStatus, BorderLayout.SOUTH);
 
                 frame.setVisible(true);
                 //dataSource.close();
@@ -166,6 +173,9 @@ public class StockMain implements ActionListener
         {
             profits = dataSource.getDailyProfit(start, end);
             chartPanel.setChart(createChart());
+            statusLabel.setText("起始日盈利："+profits.get(0).value
+                        +"，终止日盈利："+profits.get(profits.size()-1).value
+                        +"，本阶段盈利："+(profits.get(profits.size()-1).value-profits.get(0).value));
         }
         catch (Exception ex)
         {
