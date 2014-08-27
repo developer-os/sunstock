@@ -139,12 +139,14 @@ public class StockMain implements ActionListener
         DateTickUnit dateTickUnit = null;
         if (dataset.getItemCount(0) < 30)
             dateTickUnit = new DateTickUnit(DateTickUnitType.DAY, 5, new SimpleDateFormat("yyyy-MM-dd")); // 第二个参数是时间轴间距
-        else if (dataset.getItemCount(0)< 130)
+        else if (dataset.getItemCount(0)< 200)
             dateTickUnit = new DateTickUnit(DateTickUnitType.MONTH, 1, new SimpleDateFormat("yyyy/MM")); // 第二个参数是时间轴间距
-        else if (dataset.getItemCount(0)< 260)
+        else if (dataset.getItemCount(0)< 500)
             dateTickUnit = new DateTickUnit(DateTickUnitType.MONTH, 3, new SimpleDateFormat("yyyy/MM")); // 第二个参数是时间轴间距
-        else
+        else if (dataset.getItemCount(0)< 1000)
             dateTickUnit = new DateTickUnit(DateTickUnitType.MONTH, 6, new SimpleDateFormat("yyyy/MM")); // 第二个参数是时间轴间距
+        else
+            dateTickUnit = new DateTickUnit(DateTickUnitType.YEAR, 1, new SimpleDateFormat("yyyy")); // 第二个参数是时间轴间距
         // 设置时间单位
         domainAxis.setTickUnit(dateTickUnit);
         ChartUtils.setLegendEmptyBorder(chart);
