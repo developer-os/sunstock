@@ -9,6 +9,7 @@ package org.sunzoft.sunstock.storage;
 import java.util.*;
 import org.sunzoft.sunstock.*;
 import java.sql.*;
+import org.slf4j.*;
 
 /**
  *
@@ -16,6 +17,7 @@ import java.sql.*;
  */
 public class H2StockStorage
 {
+    private static final Logger logger=LoggerFactory.getLogger(H2StockStorage.class);
     private static final String TB_QUOTA_DAY="quota_day";
     private static final String TB_ACCOUNT_CASH="account_cash";
     private static final String TB_ACCOUNT_STATUS="account_status";
@@ -203,7 +205,7 @@ public class H2StockStorage
     
     public void saveAccountStatus(String date,float market,float capital) throws Exception
     {
-        System.out.println(date+"\t"+market+"\t"+capital);
+        logger.info(date+"\t"+market+"\t"+capital);
         stmtSaveAccountStatus.setString(1, date);
         stmtSaveAccountStatus.setFloat(2, market);
         stmtSaveAccountStatus.setFloat(3, capital);
@@ -212,11 +214,11 @@ public class H2StockStorage
     
     public void saveAccountStocks(String date,Map<String,Stock> stocks) throws Exception
     {
-        System.out.println("==============Final stocks===============");
+        logger.info("==============Final stocks===============");
         for(Map.Entry<String,Stock> stk:stocks.entrySet())
         {
             Stock stock=stk.getValue();
-            System.out.println(stk.getKey()+"\t"+stock.close+"*"+stock.volume+"="+(stock.close*stock.volume));
+            logger.info(stk.getKey()+"\t"+stock.close+"*"+stock.volume+"="+(stock.close*stock.volume));
             stmtSaveStockHeld.setString(1, date);
             stmtSaveStockHeld.setString(2, stk.getKey());
             stmtSaveStockHeld.setFloat(3, stock.close);
@@ -247,7 +249,7 @@ public class H2StockStorage
         stmtSaveAccountCash.setString(1, date);
         stmtSaveAccountCash.setFloat(2, money);
         stmtSaveAccountCash.executeUpdate();
-        System.out.println("Money left: "+money);
+        logger.info("Money left: "+money);
     }
     
     public float getAccountCash(String date) throws Exception
@@ -280,6 +282,7 @@ public class H2StockStorage
     
     public void clearAccountStatusAfter(String lastDate) throws Exception
     {
+        logger.info("Clearing account status after {}",lastDate);
         stmtDelAccountStatus.setString(1, lastDate);
         stmtDelAccountStatus.executeUpdate();
         stmtDelAccountCash.setString(1, lastDate);

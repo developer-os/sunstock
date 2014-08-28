@@ -43,7 +43,7 @@ public class StockDataSource
         dataSource.readMoney();
         dataSource.readStock();
         dataSource.readTrade();
-        System.out.println("总盈亏: "+dataSource.getBalance());
+        logger.info("总盈亏: "+dataSource.getBalance());
         dataSource.calculateAllAccountData();
         //dataSource.calculateAccountData();
         dataSource.close();
@@ -219,7 +219,7 @@ public class StockDataSource
                 //calculatedMoney=calculatedMoney.add(new BigDecimal(nextLine[6]));
             }
             else
-                System.out.println(moneyRecords.size()-lineNum+1+" - Unknow operation: "+nextLine[1]);
+                logger.debug(moneyRecords.size()-lineNum+1+" - Unknow operation: "+nextLine[1]);
             /*
             if(!calculatedMoney.equals(curMoney))
                 System.out.println(moneyRecords.size()-lineNum+1+" - "+nextLine[0]+" - Cal: "+calculatedMoney+"\tAct: "+nextLine[7]);   */    
@@ -235,9 +235,9 @@ public class StockDataSource
             lineNum++;
         }
         reader.close();
-        System.out.println("总投入: "+inMoney);
-        System.out.println("实际剩余资金: "+lastMoney);
-        System.out.println("计算剩余资金: "+calculatedMoney);
+        logger.info("总投入: "+inMoney);
+        logger.info("实际剩余资金: "+lastMoney);
+        logger.info("计算剩余资金: "+calculatedMoney);
     }
     
     /**
@@ -248,7 +248,7 @@ public class StockDataSource
     {
         CSVReader reader = new CSVReader(new FileReader("data/stock.xls"),'\t','"', 1);
         String[] nextLine;
-        System.out.println("========股票持仓========");
+        logger.info("========股票持仓========");
         while ((nextLine = reader.readNext()) != null)
         {
             if(StringUtils.isBlank(nextLine[2]))
@@ -256,11 +256,11 @@ public class StockDataSource
             int count=numberParser.parse(nextLine[2]).intValue();
             BigDecimal value=new BigDecimal(numberParser.parse(nextLine[7]).toString());
             totalStockValue=totalStockValue.add(value);
-            System.out.println(nextLine[0]+"\t"+nextLine[1]+"\t"+count+"\t"+value);
+            logger.info(nextLine[0]+"\t"+nextLine[1]+"\t"+count+"\t"+value);
         }
         reader.close();
-        System.out.println("=======================");
-        System.out.println("股票总市值: "+totalStockValue);
+        logger.info("=======================");
+        logger.info("股票总市值: "+totalStockValue);
     }
     
     /**
@@ -287,7 +287,7 @@ public class StockDataSource
                         int cnt=numberParser.parse(line[4]).intValue();
                         if("买入".equals(line[3])&&cnt<100&&StringUtils.isBlank(line[5]))
                         {
-                            System.out.println(line[0]+" Invalid trade "+line[3]+" "+line[4]);
+                            logger.debug(line[0]+" Invalid trade "+line[3]+" "+line[4]);
                             continue;
                         }
                         currentHeld+=cnt;
@@ -295,7 +295,7 @@ public class StockDataSource
                     else if("卖出".equals(line[3]))
                         currentHeld-=numberParser.parse(line[4]).intValue();
                     else
-                        System.out.println(line[0]+" Unknow operation: "+line[3]);
+                        logger.debug(line[0]+" Unknow operation: "+line[3]);
                     if(currentHeld==0)
                         stockHeld.remove(line[1]);
                     else
@@ -318,9 +318,9 @@ public class StockDataSource
                 }
             }
         }
-        System.out.println("===============最终持仓===============");
+        logger.info("===============最终持仓===============");
         for(String code:stockHeld.keySet())
-            System.out.println(code+"\t"+stockHeld.get(code));
+            logger.info(code+"\t"+stockHeld.get(code));
     }
     
     /**
@@ -396,7 +396,6 @@ public class StockDataSource
      */
     public void backdateAccountChanges(String from,String to) throws Exception
     {
-        logger.info("Total account changes from {} to {}: {}",from,to,accountChanges.size());
         Collections.sort(accountChanges);
         Calendar cld=Calendar.getInstance();
         cld.setTime(df.parse(from));
@@ -410,6 +409,7 @@ public class StockDataSource
             if(nextChange.date.compareTo(from)>=0)
                 break;
         }
+        logger.info("Total account changes from {} to {}: {}",from,to,accountChanges.size()-nextIndex);
         while(cld.compareTo(cldEnd)<=0)
         {
             int wkday=cld.get(Calendar.DAY_OF_WEEK);

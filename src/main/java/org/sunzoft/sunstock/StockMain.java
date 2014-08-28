@@ -9,7 +9,6 @@ import java.awt.*;
 import java.awt.event.*;
 import java.text.*;
 import java.util.*;
-import java.util.*;
 import javax.swing.*;
 import org.jfree.chart.*;
 import org.jfree.chart.axis.*;
@@ -171,6 +170,7 @@ public class StockMain implements ActionListener
         return localTimeSeriesCollection;
     }
 
+    @Override
     public void actionPerformed(ActionEvent e)
     {
         String start=startInput.getText();
