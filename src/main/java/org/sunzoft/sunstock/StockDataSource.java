@@ -44,7 +44,7 @@ public class StockDataSource
         dataSource.readStock();
         dataSource.readTrade();
         logger.info("总盈亏: "+dataSource.getBalance());
-        dataSource.calculateAllAccountData();
+        dataSource.refreshAllAccountData();
         //dataSource.calculateAccountData();
         dataSource.close();
     }
@@ -63,46 +63,67 @@ public class StockDataSource
      * 重新计算账户所有数据
      * @throws Exception 
      */
-    public void calculateAllAccountData() throws Exception
+    public void refreshAllAccountData() throws Exception
     {
-        currentStock=new HashMap<String,Stock>();    
-        currentMoney=new BigDecimal("0.000");
-        storage.clearAccountStatusAfter("19900101");
-        backdateAccountChanges(getMoneyStartDate(),df.format(new Date()));
-        saveAccountStatus(getMoneyEndDate());
+        refreshData(true);
     }
     
     /**
      * 计算账户增量数据
      * @throws Exception 
      */
-    public void calculateAccountData() throws Exception
+    public void updateAccountData() throws Exception
+    {
+        refreshData(false);
+    }
+    
+    /**
+     * 计算账户数据
+     * @param fullMode 是否重新刷新所有数据
+     * @throws Exception 
+     */
+    protected void refreshData(boolean fullMode) throws Exception
     {
         String lastStatusDate=storage.getLastAccountDate();
-        if(lastStatusDate==null)
-        {
-            calculateAllAccountData();
-            return;
-        }
+        String lastFileEndDate=storage.getConfigItem(Config.LAST_FILE_DATE);
+        logger.info("Last file date: {}. Last saved status: {}",lastFileEndDate,lastStatusDate);
+        if(lastStatusDate==null||lastFileEndDate==null)
+            fullMode=true;
+        
         Calendar cld = Calendar.getInstance();
         if(cld.get(Calendar.HOUR_OF_DAY)<18)
             cld.add(Calendar.DATE, -1);
         String end=df.format(cld.getTime());
-        String lastRecordDate=getMoneyEndDate();        
-        storage.clearAccountStatusAfter(lastRecordDate);
-        cld = Calendar.getInstance();
-        cld.setTime(df.parse(lastRecordDate));
-        cld.add(Calendar.DATE, 1);
-        String start = df.format(cld.getTime());
-        if(start.compareTo(end)>0)
+        
+        
+        String currentFileEndDate=getMoneyEndDate();
+        String start;
+        if(fullMode)
         {
-            logger.info("Start date {} is later than today. No need to do any account calculation.",start);
-            return;
+            logger.info("Doing full refresh...");
+            start=getMoneyStartDate();
+            currentStock=new HashMap<String,Stock>();    
+            currentMoney=new BigDecimal("0.000");
+            storage.clearAccountStatusAfter("19900101");
         }
-        currentStock=storage.getStockHeld(lastRecordDate);
-        currentMoney=new BigDecimal(storage.getAccountCash(lastRecordDate));
+        else
+        {
+            storage.clearAccountStatusAfter(lastFileEndDate);
+            cld = Calendar.getInstance();
+            cld.setTime(df.parse(lastFileEndDate));
+            cld.add(Calendar.DATE, 1);
+            start = df.format(cld.getTime());
+            if(start.compareTo(end)>0)
+            {
+                logger.info("Start date {} is later than today. No need to do any account calculation.",start);
+                return;
+            }
+            currentStock=storage.getStockHeld(lastFileEndDate);
+            currentMoney=new BigDecimal(storage.getAccountCash(lastFileEndDate));
+        }
         backdateAccountChanges(start,end);
-        saveAccountStatus(end);
+        saveAccountStatus(fullMode?currentFileEndDate:end);
+        storage.saveConfigItem(Config.LAST_FILE_DATE, currentFileEndDate);
     }
     
     /**
@@ -253,10 +274,17 @@ public class StockDataSource
         {
             if(StringUtils.isBlank(nextLine[2]))
                 continue;
-            int count=numberParser.parse(nextLine[2]).intValue();
-            BigDecimal value=new BigDecimal(numberParser.parse(nextLine[7]).toString());
-            totalStockValue=totalStockValue.add(value);
-            logger.info(nextLine[0]+"\t"+nextLine[1]+"\t"+count+"\t"+value);
+            try
+            {
+                int count=numberParser.parse(nextLine[2]).intValue();
+                BigDecimal value=new BigDecimal(numberParser.parse(nextLine[7]).toString());
+                totalStockValue=totalStockValue.add(value);
+                logger.info(nextLine[0]+"\t"+nextLine[1]+"\t"+count+"\t"+value);
+            }
+            catch (Exception e)
+            {
+                logger.error("Failed to parse stock info for "+nextLine[0], e);
+            }            
         }
         reader.close();
         logger.info("=======================");

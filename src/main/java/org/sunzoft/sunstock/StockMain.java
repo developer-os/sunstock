@@ -16,6 +16,7 @@ import org.jfree.chart.plot.*;
 import org.jfree.chart.renderer.xy.*;
 import org.jfree.data.time.*;
 import org.jfree.data.xy.*;
+import org.slf4j.*;
 import org.sunzoft.sunstock.visual.*;
 
 /**
@@ -24,7 +25,7 @@ import org.sunzoft.sunstock.visual.*;
  */
 public class StockMain implements ActionListener
 {
-
+    private static final Logger logger=LoggerFactory.getLogger(StockMain.class);
     StockDataSource dataSource;
     java.util.List<TimeData> profits;
     JTextField startInput = new JTextField();
@@ -32,10 +33,17 @@ public class StockMain implements ActionListener
     JLabel statusLabel;
     ChartPanel chartPanel;
 
-    public static void main(String[] args) throws Exception
+    public static void main(String[] args)
     {
-        StockMain main = new StockMain();
-        main.start();
+        try
+        {
+            StockMain main = new StockMain();
+            main.start();            
+        }
+        catch (Exception e)
+        {
+            logger.error("Failed to init application!", e);
+        }
     }
 
     public void start() throws Exception
@@ -53,8 +61,8 @@ public class StockMain implements ActionListener
         dataSource.readStock();
         dataSource.readTrade();
         //System.out.println("总盈亏: "+dataSource.getBalance());
-        //dataSource.calculateAllAccountData();
-        dataSource.calculateAccountData();
+        //dataSource.refreshAllAccountData();
+        dataSource.updateAccountData();
         Calendar cld=Calendar.getInstance();        
         profits = dataSource.getDailyProfit(cld.get(Calendar.YEAR)+"0101", cld.get(Calendar.YEAR)+"1231");
     }

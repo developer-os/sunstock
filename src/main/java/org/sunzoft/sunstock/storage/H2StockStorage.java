@@ -22,6 +22,8 @@ public class H2StockStorage
     private static final String TB_ACCOUNT_CASH="account_cash";
     private static final String TB_ACCOUNT_STATUS="account_status";
     private static final String TB_STOCK_HELD="stock_held";
+    private static final String TB_APP_CONFIG="app_config";
+    
     Connection con;
     PreparedStatement stmtSaveStockDailyQuota;
     PreparedStatement stmtGetStockQuota;
@@ -35,6 +37,9 @@ public class H2StockStorage
     PreparedStatement stmtDelAccountStatus;
     PreparedStatement stmtDelAccountCash;
     PreparedStatement stmtDelAccountStock;
+    PreparedStatement stmtGetAppConfig;
+    PreparedStatement stmtSaveAppConfig;
+    PreparedStatement stmtUpdateAppConfig;
     
     public void init() throws Exception
     {
@@ -53,6 +58,9 @@ public class H2StockStorage
         stmtDelAccountStatus=con.prepareStatement("delete from "+TB_ACCOUNT_STATUS+" where day>?");
         stmtDelAccountCash=con.prepareStatement("delete from "+TB_ACCOUNT_CASH+" where day>?");
         stmtDelAccountStock=con.prepareStatement("delete from "+TB_STOCK_HELD+" where day>?");
+        stmtGetAppConfig=con.prepareStatement("select cfg_value from "+TB_APP_CONFIG+" where cfg_name=?");
+        stmtSaveAppConfig=con.prepareStatement("insert into "+TB_APP_CONFIG+" values(?,?)");
+        stmtUpdateAppConfig=con.prepareStatement("update "+TB_APP_CONFIG+" set cfg_value=? where cfg_name=?");
     }
     
     public void close()
@@ -69,6 +77,9 @@ public class H2StockStorage
         closeStatement(stmtDelAccountStatus);
         closeStatement(stmtDelAccountCash);
         closeStatement(stmtDelAccountStock);
+        closeStatement(stmtGetAppConfig);
+        closeStatement(stmtSaveAppConfig);
+        closeStatement(stmtUpdateAppConfig);
         try
         {
             if(con!=null)
@@ -123,6 +134,11 @@ public class H2StockStorage
                      " volume integer)";
         stmt.executeUpdate(sql);
         sql = "create index if not exists "+TB_STOCK_HELD+"_IDX1 on "+TB_STOCK_HELD+"(day)";
+        stmt.executeUpdate(sql);
+        sql = "create table if not exists "+TB_APP_CONFIG +
+                     "(cfg_name varchar(20), " +
+                     " cfg_value varchar(255), " +
+                     " PRIMARY KEY (cfg_name))";
         stmt.executeUpdate(sql);
         stmt.close();
     }
@@ -289,5 +305,33 @@ public class H2StockStorage
         stmtDelAccountCash.executeUpdate();
         stmtDelAccountStock.setString(1, lastDate);
         stmtDelAccountStock.executeUpdate();
+    }
+    
+    public void saveConfigItem(String name,String value) throws Exception
+    {
+        String existingValue=getConfigItem(name);
+        if(existingValue==null&&value==null)
+            return;
+        if(existingValue!=null)
+        {
+            stmtUpdateAppConfig.setString(1, value);
+            stmtUpdateAppConfig.setString(2, name);
+            stmtUpdateAppConfig.executeUpdate();
+        }
+        else
+        {
+            stmtSaveAppConfig.setString(1, name);
+            stmtSaveAppConfig.setString(2, value);
+            stmtSaveAppConfig.executeUpdate();
+        }
+    }
+    
+    public String getConfigItem(String name) throws Exception
+    {
+        stmtGetAppConfig.setString(1, name);
+        ResultSet rs=stmtGetAppConfig.executeQuery();
+        String value=rs.next()?rs.getString(1):null;
+        rs.close();
+        return value;
     }
 }
