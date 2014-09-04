@@ -10,8 +10,9 @@ package org.sunzoft.sunstock;
  *
  * @author sunzhu
  */
-public class TimeData
+public class AccountStatus
 {
     public String date;
-    public float value;
+    public float market;
+    public float capital;
 }

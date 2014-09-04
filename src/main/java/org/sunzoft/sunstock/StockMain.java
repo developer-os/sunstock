@@ -27,7 +27,7 @@ public class StockMain implements ActionListener
 {
     private static final Logger logger=LoggerFactory.getLogger(StockMain.class);
     StockDataSource dataSource;
-    java.util.List<TimeData> profits;
+    java.util.List<AccountStatus> profits;
     JTextField startInput = new JTextField();
     JTextField endInput = new JTextField();
     JLabel statusLabel;
@@ -110,9 +110,9 @@ public class StockMain implements ActionListener
                 contentPane.add(pCtrl, BorderLayout.NORTH);
                 
                 JPanel pStatus = new JPanel();
-                statusLabel=new JLabel("起始日盈利："+profits.get(0).value
-                        +"，终止日盈利："+profits.get(profits.size()-1).value
-                        +"，本阶段盈利："+(profits.get(profits.size()-1).value-profits.get(0).value));
+                statusLabel=new JLabel("起始日盈利："+profits.get(0).market
+                        +"，终止日盈利："+profits.get(profits.size()-1).market
+                        +"，本阶段盈利："+(profits.get(profits.size()-1).market-profits.get(0).market));
                 pStatus.add(statusLabel);
                 contentPane.add(pStatus, BorderLayout.SOUTH);
 
@@ -133,8 +133,20 @@ public class StockMain implements ActionListener
         ChartUtils.setTimeSeriesRender(chart.getPlot(), true, true);
         // 5:对其他部分进行渲染
         XYPlot xyplot = (XYPlot) chart.getPlot();
-        ChartUtils.setXY_XAixs(xyplot);
-        ChartUtils.setXY_YAixs(xyplot);
+        
+        NumberAxis localNumberAxis1 = new NumberAxis("指数");
+        localNumberAxis1.setLabelPaint(Color.red);
+        localNumberAxis1.setTickLabelPaint(Color.red);        
+        xyplot.setRangeAxis(1, localNumberAxis1);
+        xyplot.setRangeAxisLocation(1, AxisLocation.BOTTOM_OR_RIGHT);
+        xyplot.setDataset(1,initIndexData());
+        StandardXYItemRenderer localStandardXYItemRenderer1 = new StandardXYItemRenderer();
+        localStandardXYItemRenderer1.setSeriesPaint(0,Color.red);
+        xyplot.setRenderer(1, localStandardXYItemRenderer1);
+        xyplot.mapDatasetToRangeAxis(1, 1);
+        
+        //ChartUtils.setXY_XAixs(xyplot);
+        //ChartUtils.setXY_YAixs(xyplot);
         // 日期X坐标轴
         DateAxis domainAxis = (DateAxis) xyplot.getDomainAxis();
         domainAxis.setAutoTickUnitSelection(false);
@@ -159,22 +171,37 @@ public class StockMain implements ActionListener
         // 设置时间单位
         domainAxis.setTickUnit(dateTickUnit);
         ChartUtils.setLegendEmptyBorder(chart);
-		// 设置图例位置
         return chart;
     }
 
     protected XYDataset initChartData()
     {
         TimeSeries ts1 = new TimeSeries("盈利金额");
-        for (TimeData td : profits)
+        for (AccountStatus td : profits)
         {
             ts1.add(new Day(Integer.parseInt(td.date.substring(6)),
                     Integer.parseInt(td.date.substring(4, 6)),
-                    Integer.parseInt(td.date.substring(0, 4))), td.value);
+                    Integer.parseInt(td.date.substring(0, 4))), (td.market-td.capital));
         }
         TimeSeriesCollection localTimeSeriesCollection = new TimeSeriesCollection();
         localTimeSeriesCollection.addSeries(ts1);
         //localTimeSeriesCollection.addSeries(ts2);
+        return localTimeSeriesCollection;
+    }
+
+    protected XYDataset initIndexData()
+    {
+        TimeSeries ts1 = new TimeSeries("盈利指数");
+        int i=1;
+        float c=profits.get(0).capital;
+        for (AccountStatus td : profits)
+        {
+            ts1.add(new Day(Integer.parseInt(td.date.substring(6)),
+                    Integer.parseInt(td.date.substring(4, 6)),
+                    Integer.parseInt(td.date.substring(0, 4))), 1+(td.market-td.capital)/c);
+        }
+        TimeSeriesCollection localTimeSeriesCollection = new TimeSeriesCollection();
+        localTimeSeriesCollection.addSeries(ts1);
         return localTimeSeriesCollection;
     }
 
@@ -187,13 +214,15 @@ public class StockMain implements ActionListener
         {
             profits = dataSource.getDailyProfit(start, end);
             chartPanel.setChart(createChart());
-            statusLabel.setText("起始日盈利："+profits.get(0).value
-                        +"，终止日盈利："+profits.get(profits.size()-1).value
-                        +"，本阶段盈利："+(profits.get(profits.size()-1).value-profits.get(0).value));
+            AccountStatus startStatus=profits.get(0);
+            AccountStatus endStatus=profits.get(profits.size()-1);
+            statusLabel.setText("起始日盈利："+(startStatus.market-startStatus.capital)
+                        +"，终止日盈利："+(endStatus.market-endStatus.capital)
+                        +"，本阶段盈利："+(endStatus.market-endStatus.capital-startStatus.market+startStatus.capital));
         }
         catch (Exception ex)
         {
-            ex.printStackTrace();
+            logger.error("Falied to handle data update!",ex);
         }        
     }
 }

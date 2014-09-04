@@ -514,8 +514,8 @@ public class StockDataSource
         return value;
     }
     
-    public List<TimeData> getDailyProfit(String start,String end) throws Exception
+    public List<AccountStatus> getDailyProfit(String start,String end) throws Exception
     {
-        return storage.getDailyProfit(start,end);
+        return storage.getAccountDailyStatus(start,end);
     }
 }

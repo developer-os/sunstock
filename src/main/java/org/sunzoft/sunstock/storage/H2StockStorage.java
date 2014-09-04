@@ -33,7 +33,7 @@ public class H2StockStorage
     PreparedStatement stmtGetStockHeld;
     PreparedStatement stmtSaveAccountCash;
     PreparedStatement stmtGetAccountCash;
-    PreparedStatement stmtGetDailyProfit;
+    PreparedStatement stmtGetDailyStatus;
     PreparedStatement stmtDelAccountStatus;
     PreparedStatement stmtDelAccountCash;
     PreparedStatement stmtDelAccountStock;
@@ -54,7 +54,7 @@ public class H2StockStorage
         stmtGetStockHeld=con.prepareStatement("select code,close,volume from "+TB_STOCK_HELD+" where day=?");
         stmtSaveAccountCash=con.prepareStatement("insert into "+TB_ACCOUNT_CASH+" values(?,?)");
         stmtGetAccountCash=con.prepareStatement("select cash from "+TB_ACCOUNT_CASH+" where day=?");
-        stmtGetDailyProfit=con.prepareStatement("select day,(market_value-capital_value) from "+TB_ACCOUNT_STATUS+" where day>=? and day<=? order by day");
+        stmtGetDailyStatus=con.prepareStatement("select day,market_value,capital_value from "+TB_ACCOUNT_STATUS+" where day>=? and day<=? order by day");
         stmtDelAccountStatus=con.prepareStatement("delete from "+TB_ACCOUNT_STATUS+" where day>?");
         stmtDelAccountCash=con.prepareStatement("delete from "+TB_ACCOUNT_CASH+" where day>?");
         stmtDelAccountStock=con.prepareStatement("delete from "+TB_STOCK_HELD+" where day>?");
@@ -73,7 +73,7 @@ public class H2StockStorage
         closeStatement(stmtGetStockHeld);
         closeStatement(stmtSaveAccountCash);
         closeStatement(stmtGetAccountCash);
-        closeStatement(stmtGetDailyProfit);
+        closeStatement(stmtGetDailyStatus);
         closeStatement(stmtDelAccountStatus);
         closeStatement(stmtDelAccountCash);
         closeStatement(stmtDelAccountStock);
@@ -279,17 +279,18 @@ public class H2StockStorage
         return cash;
     }
     
-    public List<TimeData> getDailyProfit(String start,String end) throws Exception
+    public List<AccountStatus> getAccountDailyStatus(String start,String end) throws Exception
     {
-        List<TimeData> data=new ArrayList();
-        stmtGetDailyProfit.setString(1, start);
-        stmtGetDailyProfit.setString(2, end);
-        ResultSet rs=stmtGetDailyProfit.executeQuery();
+        List<AccountStatus> data=new ArrayList();
+        stmtGetDailyStatus.setString(1, start);
+        stmtGetDailyStatus.setString(2, end);
+        ResultSet rs=stmtGetDailyStatus.executeQuery();
         while(rs.next())
         {
-            TimeData d=new TimeData();
+            AccountStatus d=new AccountStatus();
             d.date=rs.getString(1);
-            d.value=rs.getFloat(2);
+            d.market=rs.getFloat(2);
+            d.capital=rs.getFloat(3);
             data.add(d);
         }
         rs.close();
