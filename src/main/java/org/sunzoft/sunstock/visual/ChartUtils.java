@@ -256,14 +256,12 @@ public class ChartUtils
     /**
      * 设置时间序列图样式
      *
-     * @param plot
+     * @param xyplot
      * @param isShowData 是否显示数据
      * @param isShapesVisible 是否显示数据节点形状
      */
-    public static void setTimeSeriesRender(Plot plot, boolean isShowData, boolean isShapesVisible)
+    public static void setTimeSeriesRender(XYPlot xyplot, boolean isShowData, boolean isShapesVisible)
     {
-
-        XYPlot xyplot = (XYPlot) plot;
         xyplot.setNoDataMessage(NO_DATA_MSG);
         xyplot.setInsets(new RectangleInsets(10, 10, 5, 10));
 
@@ -291,6 +289,46 @@ public class ChartUtils
         setXY_YAixs(xyplot);
 
     }
+    
+    /**
+     * 设置时间序列图样式
+     *
+     * @param xyplot
+     * @param showData 是否显示数据
+     * @param isShapesVisible 是否显示数据节点形状
+     */
+    public static void setTimeSeriesStyle(XYPlot xyplot, boolean showData, boolean isShapesVisible)
+    {
+        xyplot.setNoDataMessage(NO_DATA_MSG);
+        xyplot.setInsets(new RectangleInsets(10, 10, 5, 10));
+
+        for(int i=0;i<xyplot.getDatasetCount();i++)
+        {
+            XYLineAndShapeRenderer xyRenderer = (XYLineAndShapeRenderer) xyplot.getRenderer(i);
+            if(xyRenderer==null)
+            {
+                xyRenderer=new XYLineAndShapeRenderer();
+                xyplot.setRenderer(i, xyRenderer);
+            }
+            //xyRenderer.setSeriesPaint(0, CHART_COLORS[i]);
+            xyRenderer.setSeriesStroke(0, new BasicStroke(2.0F));
+            xyRenderer.setBaseItemLabelGenerator(new StandardXYItemLabelGenerator());
+            xyRenderer.setBaseShapesVisible(false);
+            if (showData)
+            {
+                xyRenderer.setBaseItemLabelsVisible(true);
+                xyRenderer.setBaseItemLabelGenerator(new StandardXYItemLabelGenerator());
+                xyRenderer.setBasePositiveItemLabelPosition(new ItemLabelPosition(ItemLabelAnchor.OUTSIDE1, TextAnchor.BOTTOM_CENTER));// weizhi
+            }
+            xyRenderer.setBaseShapesVisible(isShapesVisible);// 数据点绘制形状
+
+            StandardXYToolTipGenerator xyTooltipGenerator = new StandardXYToolTipGenerator("{1}: {2}", new SimpleDateFormat("yyyy-MM-dd"), new DecimalFormat("0"));
+            xyRenderer.setBaseToolTipGenerator(xyTooltipGenerator);
+        }
+        //setXY_XAixs(xyplot);
+        //setXY_YAixs(xyplot);
+
+    }
 
     /**
      * 设置时间序列图样式 -默认不显示数据节点形状
@@ -298,7 +336,7 @@ public class ChartUtils
      * @param plot
      * @param isShowData 是否显示数据
      */
-    public static void setTimeSeriesRender(Plot plot, boolean isShowData)
+    public static void setTimeSeriesRender(XYPlot plot, boolean isShowData)
     {
         setTimeSeriesRender(plot, isShowData, false);
     }
@@ -306,13 +344,11 @@ public class ChartUtils
     /**
      * 设置时间序列图渲染：但是存在一个问题：如果timeseries里面的日期是按照天组织， 那么柱子的宽度会非常小，和直线一样粗细
      *
-     * @param plot
+     * @param xyplot
      * @param isShowDataLabels
      */
-    public static void setTimeSeriesBarRender(Plot plot, boolean isShowDataLabels)
+    public static void setTimeSeriesBarRender(XYPlot xyplot, boolean isShowDataLabels)
     {
-
-        XYPlot xyplot = (XYPlot) plot;
         xyplot.setNoDataMessage(NO_DATA_MSG);
 
         XYBarRenderer xyRenderer = new XYBarRenderer(0.1D);
@@ -374,7 +410,7 @@ public class ChartUtils
     /**
      * 设置类别图表(CategoryPlot) X坐标轴线条颜色和样式
      *
-     * @param axis
+     * @param plot
      */
     public static void setXAixs(CategoryPlot plot)
     {
@@ -387,7 +423,7 @@ public class ChartUtils
     /**
      * 设置类别图表(CategoryPlot) Y坐标轴线条颜色和样式 同时防止数据无法显示
      *
-     * @param axis
+     * @param plot
      */
     public static void setYAixs(CategoryPlot plot)
     {

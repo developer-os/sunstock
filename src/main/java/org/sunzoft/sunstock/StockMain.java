@@ -110,11 +110,7 @@ public class StockMain implements ActionListener
                 contentPane.add(pCtrl, BorderLayout.NORTH);
                 
                 JPanel pStatus = new JPanel();
-                AccountStatus startStatus=profits.get(0);
-                AccountStatus endStatus=profits.get(profits.size()-1);
-                statusLabel=new JLabel("起始日盈利："+(startStatus.market-startStatus.capital)
-                        +"，终止日盈利："+(endStatus.market-endStatus.capital)
-                        +"，本阶段盈利："+(endStatus.market-endStatus.capital-startStatus.market+startStatus.capital));
+                statusLabel=new JLabel(getStatusText());
                 pStatus.add(statusLabel);
                 contentPane.add(pStatus, BorderLayout.SOUTH);
 
@@ -129,33 +125,24 @@ public class StockMain implements ActionListener
         // 2：创建Chart[创建不同图形]
         XYDataset dataset = initChartData();
         JFreeChart chart = ChartFactory.createTimeSeriesChart("收益曲线", "时间", "盈利", dataset);
-        // 3:设置抗锯齿，防止字体显示不清楚
-        ChartUtils.setAntiAlias(chart);// 抗锯齿
-        // 4:对柱子进行渲染[创建不同图形]
-        ChartUtils.setTimeSeriesRender(chart.getPlot(), true, true);
-        // 5:对其他部分进行渲染
+        
         XYPlot xyplot = (XYPlot) chart.getPlot();
         
         NumberAxis localNumberAxis1 = new NumberAxis("指数");
-        localNumberAxis1.setLabelPaint(Color.red);
-        localNumberAxis1.setTickLabelPaint(Color.red);        
+        //localNumberAxis1.setLabelPaint(Color.red);
+        //localNumberAxis1.setTickLabelPaint(Color.red);        
         xyplot.setRangeAxis(1, localNumberAxis1);
         xyplot.setRangeAxisLocation(1, AxisLocation.BOTTOM_OR_RIGHT);
         xyplot.setDataset(1,initIndexData());
-        StandardXYItemRenderer localStandardXYItemRenderer1 = new StandardXYItemRenderer();
-        localStandardXYItemRenderer1.setSeriesPaint(0,Color.red);
-        xyplot.setRenderer(1, localStandardXYItemRenderer1);
-        xyplot.mapDatasetToRangeAxis(1, 1);
+        xyplot.mapDatasetToRangeAxis(1, 1);        
         
-        //ChartUtils.setXY_XAixs(xyplot);
-        //ChartUtils.setXY_YAixs(xyplot);
+        ChartUtils.setAntiAlias(chart);// 抗锯齿
+        ChartUtils.setTimeSeriesStyle(xyplot, false, true);
+        ChartUtils.setLegendEmptyBorder(chart);
+        
         // 日期X坐标轴
         DateAxis domainAxis = (DateAxis) xyplot.getDomainAxis();
         domainAxis.setAutoTickUnitSelection(false);
-        
-        // 数据过多,不显示数据
-        XYLineAndShapeRenderer xyRenderer = (XYLineAndShapeRenderer) xyplot.getRenderer();
-        xyRenderer.setBaseItemLabelsVisible(false);
         
         DateTickUnit dateTickUnit = null;
         if (dataset.getItemCount(0) < 30)
@@ -172,7 +159,6 @@ public class StockMain implements ActionListener
             dateTickUnit = new DateTickUnit(DateTickUnitType.YEAR, 1, new SimpleDateFormat("yyyy")); // 第二个参数是时间轴间距
         // 设置时间单位
         domainAxis.setTickUnit(dateTickUnit);
-        ChartUtils.setLegendEmptyBorder(chart);
         return chart;
     }
 
@@ -194,7 +180,6 @@ public class StockMain implements ActionListener
     protected XYDataset initIndexData()
     {
         TimeSeries ts1 = new TimeSeries("盈利指数");
-        int i=1;
         float c=profits.get(0).capital;
         for (AccountStatus td : profits)
         {
@@ -216,15 +201,24 @@ public class StockMain implements ActionListener
         {
             profits = dataSource.getDailyProfit(start, end);
             chartPanel.setChart(createChart());
-            AccountStatus startStatus=profits.get(0);
-            AccountStatus endStatus=profits.get(profits.size()-1);
-            statusLabel.setText("起始日盈利："+(startStatus.market-startStatus.capital)
-                        +"，终止日盈利："+(endStatus.market-endStatus.capital)
-                        +"，本阶段盈利："+(endStatus.market-endStatus.capital-startStatus.market+startStatus.capital));
+            statusLabel.setText(getStatusText());
         }
         catch (Exception ex)
         {
             logger.error("Falied to handle data update!",ex);
         }        
+    }
+    
+    protected String getStatusText()
+    {
+        AccountStatus startStatus = profits.get(0);
+        AccountStatus endStatus = profits.get(profits.size() - 1);
+        float win=endStatus.market - endStatus.capital - startStatus.market + startStatus.capital;
+        return "起始日成本：" + startStatus.capital
+                +"，起始日盈利：" + (startStatus.market - startStatus.capital)
+                + "，终止日成本：" + endStatus.capital
+                + "，终止日盈利：" + (endStatus.market - endStatus.capital)
+                + "，本阶段盈利：" + win
+                + "，" + String.valueOf(win* 100 / endStatus.capital).substring(0,4) + "%";
     }
 }
