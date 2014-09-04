@@ -13,7 +13,6 @@ import javax.swing.*;
 import org.jfree.chart.*;
 import org.jfree.chart.axis.*;
 import org.jfree.chart.plot.*;
-import org.jfree.chart.renderer.xy.*;
 import org.jfree.data.time.*;
 import org.jfree.data.xy.*;
 import org.slf4j.*;
@@ -113,7 +112,8 @@ public class StockMain implements ActionListener
                 statusLabel=new JLabel(getStatusText());
                 pStatus.add(statusLabel);
                 contentPane.add(pStatus, BorderLayout.SOUTH);
-
+                
+                frame.setExtendedState(frame.getExtendedState() | JFrame.MAXIMIZED_BOTH);
                 frame.setVisible(true);
                 //dataSource.close();
             }
