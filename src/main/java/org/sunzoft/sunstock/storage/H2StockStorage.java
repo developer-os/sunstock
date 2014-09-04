@@ -230,7 +230,7 @@ public class H2StockStorage
     
     public void saveAccountStocks(String date,Map<String,Stock> stocks) throws Exception
     {
-        logger.info("==============Final stocks===============");
+        logger.info("==============Final stocks({})===============",date);
         for(Map.Entry<String,Stock> stk:stocks.entrySet())
         {
             Stock stock=stk.getValue();
@@ -245,6 +245,7 @@ public class H2StockStorage
     
     public Map<String,Stock> getStockHeld(String date) throws Exception
     {
+        logger.debug("Reading saved stock status...");
         Map<String,Stock> stocks=new HashMap<String,Stock>();        
         stmtGetStockHeld.setString(1, date);
         ResultSet rs=stmtGetStockHeld.executeQuery();
@@ -255,6 +256,7 @@ public class H2StockStorage
             t.close=rs.getFloat(2);
             t.volume=rs.getInt(3);
             stocks.put(t.code, t);
+            logger.debug("{}\t{}\t{}",t.code,t.volume,t.close);
         }
         rs.close();
         return stocks;
@@ -262,10 +264,10 @@ public class H2StockStorage
     
     public void saveAccountCash(String date,float money) throws Exception
     {
+        logger.info("Saving money status: {}",money);
         stmtSaveAccountCash.setString(1, date);
         stmtSaveAccountCash.setFloat(2, money);
         stmtSaveAccountCash.executeUpdate();
-        logger.info("Money left: "+money);
     }
     
     public float getAccountCash(String date) throws Exception

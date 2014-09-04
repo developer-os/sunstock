@@ -110,9 +110,11 @@ public class StockMain implements ActionListener
                 contentPane.add(pCtrl, BorderLayout.NORTH);
                 
                 JPanel pStatus = new JPanel();
-                statusLabel=new JLabel("起始日盈利："+profits.get(0).market
-                        +"，终止日盈利："+profits.get(profits.size()-1).market
-                        +"，本阶段盈利："+(profits.get(profits.size()-1).market-profits.get(0).market));
+                AccountStatus startStatus=profits.get(0);
+                AccountStatus endStatus=profits.get(profits.size()-1);
+                statusLabel=new JLabel("起始日盈利："+(startStatus.market-startStatus.capital)
+                        +"，终止日盈利："+(endStatus.market-endStatus.capital)
+                        +"，本阶段盈利："+(endStatus.market-endStatus.capital-startStatus.market+startStatus.capital));
                 pStatus.add(statusLabel);
                 contentPane.add(pStatus, BorderLayout.SOUTH);
 

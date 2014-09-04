@@ -120,9 +120,11 @@ public class StockDataSource
             }
             currentStock=storage.getStockHeld(lastFileEndDate);
             currentMoney=new BigDecimal(storage.getAccountCash(lastFileEndDate));
+            logger.debug("Saved money status: {}",currentMoney);
         }
         backdateAccountChanges(start,end);
-        saveAccountStatus(fullMode?currentFileEndDate:end);
+        if(fullMode||currentFileEndDate.compareTo(lastFileEndDate)>0)
+            saveAccountStatus(currentFileEndDate);
         storage.saveConfigItem(Config.LAST_FILE_DATE, currentFileEndDate);
     }
     
@@ -445,7 +447,8 @@ public class StockDataSource
             {
                 String day=df.format(cld.getTime());               
                 while(day.equals(nextChange.date))//get all changes for the day
-                {                    
+                {
+                    logger.debug("Applying change: code {}, volume {}, money {}",nextChange.code,nextChange.stockDelta,nextChange.moneyDelta);
                     if(nextChange.code!=null)//stock change
                     {
                         Stock v=currentStock.get(nextChange.code);
