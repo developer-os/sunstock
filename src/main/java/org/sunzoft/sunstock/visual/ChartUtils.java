@@ -322,7 +322,7 @@ public class ChartUtils
             }
             xyRenderer.setBaseShapesVisible(isShapesVisible);// 数据点绘制形状
 
-            StandardXYToolTipGenerator xyTooltipGenerator = new StandardXYToolTipGenerator("{1}: {2}", new SimpleDateFormat("yyyy-MM-dd"), new DecimalFormat("0"));
+            StandardXYToolTipGenerator xyTooltipGenerator = new StandardXYToolTipGenerator("{1}: {2}", new SimpleDateFormat("yyyy-MM-dd"), new DecimalFormat("0.00"));
             xyRenderer.setBaseToolTipGenerator(xyTooltipGenerator);
         }
         //setXY_XAixs(xyplot);
