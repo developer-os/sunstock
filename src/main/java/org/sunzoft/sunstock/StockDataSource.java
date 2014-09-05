@@ -183,7 +183,7 @@ public class StockDataSource
      */
     public void readMoney() throws Exception
     {
-        CSVReader reader = new CSVReader(new FileReader("data/money.xls"),'\t','"', 1);
+        CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream("data/money.xls"),"GBK"),'\t','"', 1);
         int lineNum=0;
         moneyRecords=reverseRecords(reader);
         BigDecimal lastMoney=new BigDecimal("0.000");
@@ -269,7 +269,7 @@ public class StockDataSource
      */
     public void readStock() throws Exception
     {
-        CSVReader reader = new CSVReader(new FileReader("data/stock.xls"),'\t','"', 1);
+        CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream("data/stock.xls"),"GBK"),'\t','"', 1);
         String[] nextLine;
         logger.info("========股票持仓========");
         while ((nextLine = reader.readNext()) != null)
@@ -299,7 +299,7 @@ public class StockDataSource
      */
     public void readTrade() throws Exception
     {
-        CSVReader reader = new CSVReader(new FileReader("data/trade.xls"),'\t','"', 1);
+        CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream("data/trade.xls"),"GBK"),'\t','"', 1);
         SortedMap<String,List<String[]>> sortMap=sortRecords(reader);
         reader.close();
         for(String date:sortMap.keySet())

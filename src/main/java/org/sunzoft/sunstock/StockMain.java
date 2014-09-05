@@ -219,6 +219,6 @@ public class StockMain implements ActionListener
                 + "，终止日成本：" + endStatus.capital
                 + "，终止日盈利：" + (endStatus.market - endStatus.capital)
                 + "，本阶段盈利：" + win
-                + "，" + String.valueOf(win* 100 / endStatus.capital).substring(0,4) + "%";
+                + "，" + String.valueOf(win* 100 / startStatus.capital).substring(0,4) + "%";
     }
 }
