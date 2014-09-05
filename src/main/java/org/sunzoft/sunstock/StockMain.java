@@ -128,13 +128,7 @@ public class StockMain implements ActionListener
         
         XYPlot xyplot = (XYPlot) chart.getPlot();
         
-        NumberAxis localNumberAxis1 = new NumberAxis("指数");
-        //localNumberAxis1.setLabelPaint(Color.red);
-        //localNumberAxis1.setTickLabelPaint(Color.red);        
-        xyplot.setRangeAxis(1, localNumberAxis1);
-        xyplot.setRangeAxisLocation(1, AxisLocation.BOTTOM_OR_RIGHT);
-        xyplot.setDataset(1,initIndexData());
-        xyplot.mapDatasetToRangeAxis(1, 1);        
+        //addIndexChart(xyplot);        
         
         ChartUtils.setAntiAlias(chart);// 抗锯齿
         ChartUtils.setTimeSeriesStyle(xyplot, false, true);
@@ -160,6 +154,17 @@ public class StockMain implements ActionListener
         // 设置时间单位
         domainAxis.setTickUnit(dateTickUnit);
         return chart;
+    }
+    
+    protected void addIndexChart(XYPlot xyplot)
+    {
+        NumberAxis localNumberAxis1 = new NumberAxis("指数");
+        //localNumberAxis1.setLabelPaint(Color.red);
+        //localNumberAxis1.setTickLabelPaint(Color.red);        
+        xyplot.setRangeAxis(1, localNumberAxis1);
+        xyplot.setRangeAxisLocation(1, AxisLocation.BOTTOM_OR_RIGHT);
+        xyplot.setDataset(1,initIndexData());
+        xyplot.mapDatasetToRangeAxis(1, 1);
     }
 
     protected XYDataset initChartData()
@@ -219,6 +224,6 @@ public class StockMain implements ActionListener
                 + "，终止日成本：" + endStatus.capital
                 + "，终止日盈利：" + (endStatus.market - endStatus.capital)
                 + "，本阶段盈利：" + win
-                + "，" + String.valueOf(win* 100 / startStatus.capital).substring(0,4) + "%";
+                + "，" + new DecimalFormat("0.00").format(win* 100 / startStatus.capital)+"%";
     }
 }

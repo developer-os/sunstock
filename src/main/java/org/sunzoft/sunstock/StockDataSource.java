@@ -91,7 +91,7 @@ public class StockDataSource
             fullMode=true;
         
         Calendar cld = Calendar.getInstance();
-        if(cld.get(Calendar.HOUR_OF_DAY)<18)
+        if(cld.get(Calendar.HOUR_OF_DAY)<17)
             cld.add(Calendar.DATE, -1);
         String end=df.format(cld.getTime());
         
