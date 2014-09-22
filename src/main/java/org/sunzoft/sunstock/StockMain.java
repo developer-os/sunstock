@@ -137,8 +137,9 @@ public class StockMain implements ActionListener
         // 日期X坐标轴
         DateAxis domainAxis = (DateAxis) xyplot.getDomainAxis();
         domainAxis.setAutoTickUnitSelection(false);
+        domainAxis.setTimeline(SegmentedTimeline.newMondayThroughFridayTimeline());
         
-        DateTickUnit dateTickUnit = null;
+        DateTickUnit dateTickUnit;
         if (dataset.getItemCount(0) < 30)
             dateTickUnit = new DateTickUnit(DateTickUnitType.DAY, 5, new SimpleDateFormat("yyyy-MM-dd")); // 第二个参数是时间轴间距
         else if (dataset.getItemCount(0) < 100)
