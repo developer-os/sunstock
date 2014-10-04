@@ -220,11 +220,12 @@ public class StockMain implements ActionListener
         AccountStatus startStatus = profits.get(0);
         AccountStatus endStatus = profits.get(profits.size() - 1);
         float win=endStatus.market - endStatus.capital - startStatus.market + startStatus.capital;
+        DecimalFormat formater=new DecimalFormat("0.00");
         return "起始日成本：" + startStatus.capital
-                +"，起始日盈利：" + (startStatus.market - startStatus.capital)
+                +"，起始日盈利：" + formater.format(startStatus.market - startStatus.capital)
                 + "，终止日成本：" + endStatus.capital
-                + "，终止日盈利：" + (endStatus.market - endStatus.capital)
-                + "，本阶段盈利：" + win
-                + "，" + new DecimalFormat("0.00").format(win* 100 / startStatus.capital)+"%";
+                + "，终止日盈利：" + formater.format(endStatus.market - endStatus.capital)
+                + "，本阶段盈利：" + formater.format(win)
+                + "，" + formater.format(win* 100 / endStatus.capital)+"%";
     }
 }
