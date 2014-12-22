@@ -122,7 +122,7 @@ public class StockDataSource
             currentMoney=new BigDecimal(storage.getAccountCash(lastFileEndDate));
             logger.debug("Saved money status: {}",currentMoney);
         }
-        backdateAccountChanges(start,end);
+        replayAccountChanges(start,end);
         if(fullMode||currentFileEndDate.compareTo(lastFileEndDate)>0)
             saveAccountStatus(currentFileEndDate);
         storage.saveConfigItem(Config.LAST_FILE_DATE, currentFileEndDate);
@@ -424,7 +424,7 @@ public class StockDataSource
      * @param to
      * @throws Exception 
      */
-    public void backdateAccountChanges(String from,String to) throws Exception
+    public void replayAccountChanges(String from,String to) throws Exception
     {
         Collections.sort(accountChanges);
         Calendar cld=Calendar.getInstance();
