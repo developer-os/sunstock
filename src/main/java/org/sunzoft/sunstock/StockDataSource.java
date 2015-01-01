@@ -53,7 +53,7 @@ public class StockDataSource
     Map<String,Stock> currentStock;
     BigDecimal currentMoney;
     
-    String weituoStartDate=null;
+    String lastValidDate=null;
     List<AccountChange> wtAccountChanges=null;
     
     public static void main( String[] args ) throws Exception
@@ -74,11 +74,27 @@ public class StockDataSource
     {
         storage.init();
         marketProvider.init();
+        String weituoStartDate=null;
         if(new File(WEITUO_FILE).exists())
         {
             wtAccountChanges=readWeituo();
             weituoStartDate=wtAccountChanges.get(0).date;
         }
+        String lastFileEndDate=storage.getConfigItem(Config.LAST_FILE_DATE);
+        if(lastFileEndDate!=null&&weituoStartDate!=null&weituoStartDate.compareTo(lastFileEndDate)<0)
+        {
+            Calendar cld = Calendar.getInstance();
+            cld.setTime(df.parse(weituoStartDate));
+            cld.add(Calendar.DATE, -1);
+            lastFileEndDate = df.format(cld.getTime());
+        }
+        String lastStatusDate=storage.getLastAccountDate(lastFileEndDate);
+        
+        lastValidDate=lastFileEndDate;
+        if(lastStatusDate.compareTo(lastFileEndDate)<0)
+            lastValidDate=lastStatusDate;
+        logger.info("Last file date: {}. Last saved status: {}.",lastFileEndDate,lastStatusDate);
+        logger.info("Last vlidate date: {}.",lastValidDate);
         readMoney();
         readStock();
         readTrade();
@@ -111,26 +127,8 @@ public class StockDataSource
      */
     protected void refreshData(boolean fullMode) throws Exception
     {
-        String lastFileEndDate=storage.getConfigItem(Config.LAST_FILE_DATE);
-        if(lastFileEndDate==null)
+        if(lastValidDate==null)
             fullMode=true;
-        else if(weituoStartDate!=null&weituoStartDate.compareTo(lastFileEndDate)<0)
-        {
-            Calendar cld = Calendar.getInstance();
-            cld.setTime(df.parse(weituoStartDate));
-            cld.add(Calendar.DATE, -1);
-            lastFileEndDate = df.format(cld.getTime());
-        }
-        String lastStatusDate=storage.getLastAccountDate(lastFileEndDate);
-        
-        String lastValidDate=lastFileEndDate;
-        if(lastStatusDate==null)
-            fullMode=true;
-        else if(lastStatusDate.compareTo(lastFileEndDate)<0)
-            lastValidDate=lastStatusDate;
-        logger.info("Last file date: {}. Last saved status: {}.",lastFileEndDate,lastStatusDate);
-        logger.info("Last vlidate date: {}.",lastValidDate);
-        
         Calendar cld = Calendar.getInstance();
         if(cld.get(Calendar.HOUR_OF_DAY)<17)
             cld.add(Calendar.DATE, -1);
@@ -229,22 +227,20 @@ public class StockDataSource
         BigDecimal lastCalculatedMoney=new BigDecimal("0.000");
         for(String[] nextLine:moneyRecords)
         {
-            if(weituoStartDate!=null&&nextLine[0].compareTo(weituoStartDate)>=0)
+            if(lastValidDate!=null&&nextLine[0].compareTo(lastValidDate)>=0)
                 break;
             BigDecimal curMoney=new BigDecimal("0.000");
             if(!StringUtils.isBlank(nextLine[7]))
                 curMoney=new BigDecimal(nextLine[7]);
             if("取出".equals(nextLine[1]))
             {
-                inMoney=inMoney.subtract(new BigDecimal(nextLine[6]));
                 calculatedMoney=calculatedMoney.subtract(new BigDecimal(nextLine[6]));
-                capitalRange.put(nextLine[0], inMoney);
+                changeCapital(nextLine[0],new BigDecimal("-"+nextLine[6]));
             }
             else if("存入".equals(nextLine[1]))
             {
-                inMoney=inMoney.add(new BigDecimal(nextLine[6]));
                 calculatedMoney=calculatedMoney.add(new BigDecimal(nextLine[6]));
-                capitalRange.put(nextLine[0], inMoney);
+                changeCapital(nextLine[0],new BigDecimal(nextLine[6]));
             }
             else if("买入".equals(nextLine[1]))
             {
@@ -345,7 +341,7 @@ public class StockDataSource
         reader.close();
         for(String date:sortMap.keySet())
         {
-            if(weituoStartDate!=null&&date.compareTo(weituoStartDate)>=0)
+            if(lastValidDate!=null&&date.compareTo(lastValidDate)>=0)
                 break;
             List<String[]> lines=sortMap.get(date);
             for(String[] line:lines)
@@ -612,7 +608,7 @@ public class StockDataSource
         {
             calculatedMoney=calculatedMoney.add(ac.moneyDelta);
             if(ac.code==null)
-                inMoney=inMoney.subtract(ac.moneyDelta);
+                changeCapital(ac.date,ac.moneyDelta);
             else
             {
                 Integer v = stockHeld.get(ac.code);
@@ -625,5 +621,11 @@ public class StockDataSource
             }
             accountChanges.add(ac);
         }
+    }
+    
+    protected void changeCapital(String date, BigDecimal delta)
+    {
+        inMoney=inMoney.add(delta);
+        capitalRange.put(date, inMoney);
     }
 }

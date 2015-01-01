@@ -222,7 +222,7 @@ public class H2StockStorage
     
     public void saveAccountStatus(String date,float market,float capital) throws Exception
     {
-        logger.info(date+"\t"+market+"\t"+capital);
+        logger.info("Saving account status: {}\t{}\t{}",date,market,capital);
         stmtSaveAccountStatus.setString(1, date);
         stmtSaveAccountStatus.setFloat(2, market);
         stmtSaveAccountStatus.setFloat(3, capital);
