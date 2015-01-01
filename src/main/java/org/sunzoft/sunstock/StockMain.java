@@ -56,11 +56,6 @@ public class StockMain implements ActionListener
     {
         dataSource = new StockDataSource();
         dataSource.init();
-        dataSource.readMoney();
-        dataSource.readStock();
-        dataSource.readTrade();
-        //System.out.println("总盈亏: "+dataSource.getBalance());
-        //dataSource.refreshAllAccountData();
         dataSource.updateAccountData();
         Calendar cld=Calendar.getInstance();        
         profits = dataSource.getDailyProfit(cld.get(Calendar.YEAR)+"0101", cld.get(Calendar.YEAR)+"1231");

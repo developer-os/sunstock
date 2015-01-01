@@ -18,8 +18,25 @@ import org.sunzoft.sunstock.utils.*;
 public class StockDataSource 
 {
     private static final Logger logger=LoggerFactory.getLogger(StockDataSource.class);
+    public static final String DATA_PATH="data";
+    public static final String STOCK_FILE=DATA_PATH+"/stock.xls";
+    public static final String TRADE_FILE=DATA_PATH+"/trade.xls";
+    public static final String MONEY_FILE=DATA_PATH+"/money.xls";
+    public static final String WEITUO_FILE=DATA_PATH+"/wt.xls";
+    
+    /**
+     * 投入资金
+     */
     BigDecimal inMoney=new BigDecimal(0);
+    
+    /**
+     * 股票市值
+     */
     BigDecimal totalStockValue=new BigDecimal(0);
+    
+    /**
+     * 计算获得的当前现金
+     */
     BigDecimal calculatedMoney=new BigDecimal("0.000");
         
     NumberFormat numberParser=NumberFormat.getNumberInstance(java.util.Locale.US);
@@ -36,13 +53,13 @@ public class StockDataSource
     Map<String,Stock> currentStock;
     BigDecimal currentMoney;
     
+    String weituoStartDate=null;
+    List<AccountChange> wtAccountChanges=null;
+    
     public static void main( String[] args ) throws Exception
     {
         StockDataSource dataSource=new StockDataSource();
         dataSource.init();
-        dataSource.readMoney();
-        dataSource.readStock();
-        dataSource.readTrade();
         logger.info("总盈亏: "+dataSource.getBalance());
         dataSource.refreshAllAccountData();
         //dataSource.calculateAccountData();
@@ -57,6 +74,16 @@ public class StockDataSource
     {
         storage.init();
         marketProvider.init();
+        if(new File(WEITUO_FILE).exists())
+        {
+            wtAccountChanges=readWeituo();
+            weituoStartDate=wtAccountChanges.get(0).date;
+        }
+        readMoney();
+        readStock();
+        readTrade();
+        if(weituoStartDate!=null)
+            applyWeituoChanges();
     }
     
     /**
@@ -84,19 +111,32 @@ public class StockDataSource
      */
     protected void refreshData(boolean fullMode) throws Exception
     {
-        String lastStatusDate=storage.getLastAccountDate();
         String lastFileEndDate=storage.getConfigItem(Config.LAST_FILE_DATE);
-        logger.info("Last file date: {}. Last saved status: {}",lastFileEndDate,lastStatusDate);
-        if(lastStatusDate==null||lastFileEndDate==null)
+        if(lastFileEndDate==null)
             fullMode=true;
+        else if(weituoStartDate!=null&weituoStartDate.compareTo(lastFileEndDate)<0)
+        {
+            Calendar cld = Calendar.getInstance();
+            cld.setTime(df.parse(weituoStartDate));
+            cld.add(Calendar.DATE, -1);
+            lastFileEndDate = df.format(cld.getTime());
+        }
+        String lastStatusDate=storage.getLastAccountDate(lastFileEndDate);
+        
+        String lastValidDate=lastFileEndDate;
+        if(lastStatusDate==null)
+            fullMode=true;
+        else if(lastStatusDate.compareTo(lastFileEndDate)<0)
+            lastValidDate=lastStatusDate;
+        logger.info("Last file date: {}. Last saved status: {}.",lastFileEndDate,lastStatusDate);
+        logger.info("Last vlidate date: {}.",lastValidDate);
         
         Calendar cld = Calendar.getInstance();
         if(cld.get(Calendar.HOUR_OF_DAY)<17)
             cld.add(Calendar.DATE, -1);
-        String end=df.format(cld.getTime());
+        String end=df.format(cld.getTime());        
         
-        
-        String currentFileEndDate=getMoneyEndDate();
+        String currentFileEndDate=accountChanges.get(accountChanges.size()-1).date;
         String start;
         if(fullMode)
         {
@@ -108,9 +148,9 @@ public class StockDataSource
         }
         else
         {
-            storage.clearAccountStatusAfter(lastFileEndDate);
+            storage.clearAccountStatusAfter(lastValidDate);
             cld = Calendar.getInstance();
-            cld.setTime(df.parse(lastFileEndDate));
+            cld.setTime(df.parse(lastValidDate));
             cld.add(Calendar.DATE, 1);
             start = df.format(cld.getTime());
             if(start.compareTo(end)>0)
@@ -118,12 +158,11 @@ public class StockDataSource
                 logger.info("Start date {} is later than today. No need to do any account calculation.",start);
                 return;
             }
-            currentStock=storage.getStockHeld(lastFileEndDate);
-            currentMoney=new BigDecimal(storage.getAccountCash(lastFileEndDate));
-            logger.debug("Saved money status: {}",currentMoney);
+            currentStock=storage.getStockHeld(lastValidDate);
+            currentMoney=new BigDecimal(storage.getAccountCash(lastValidDate));
         }
         replayAccountChanges(start,end);
-        if(fullMode||currentFileEndDate.compareTo(lastFileEndDate)>0)
+        if(fullMode||currentFileEndDate.compareTo(lastValidDate)>0)
             saveAccountStatus(currentFileEndDate);
         storage.saveConfigItem(Config.LAST_FILE_DATE, currentFileEndDate);
     }
@@ -181,15 +220,17 @@ public class StockDataSource
      * 读取资金流水
      * @throws Exception 
      */
-    public void readMoney() throws Exception
+    protected void readMoney() throws Exception
     {
-        CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream("data/money.xls"),"GBK"),'\t','"', 1);
+        CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream(MONEY_FILE),"GBK"),'\t','"', 1);
         int lineNum=0;
         moneyRecords=reverseRecords(reader);
         BigDecimal lastMoney=new BigDecimal("0.000");
         BigDecimal lastCalculatedMoney=new BigDecimal("0.000");
         for(String[] nextLine:moneyRecords)
         {
+            if(weituoStartDate!=null&&nextLine[0].compareTo(weituoStartDate)>=0)
+                break;
             BigDecimal curMoney=new BigDecimal("0.000");
             if(!StringUtils.isBlank(nextLine[7]))
                 curMoney=new BigDecimal(nextLine[7]);
@@ -267,9 +308,9 @@ public class StockDataSource
      * 读取股票持仓
      * @throws Exception 
      */
-    public void readStock() throws Exception
+    protected void readStock() throws Exception
     {
-        CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream("data/stock.xls"),"GBK"),'\t','"', 1);
+        CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream(STOCK_FILE),"GBK"),'\t','"', 1);
         String[] nextLine;
         logger.info("========股票持仓========");
         while ((nextLine = reader.readNext()) != null)
@@ -297,13 +338,15 @@ public class StockDataSource
      * 读取交易流水
      * @throws Exception 
      */
-    public void readTrade() throws Exception
+    protected void readTrade() throws Exception
     {
-        CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream("data/trade.xls"),"GBK"),'\t','"', 1);
+        CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream(TRADE_FILE),"GBK"),'\t','"', 1);
         SortedMap<String,List<String[]>> sortMap=sortRecords(reader);
         reader.close();
         for(String date:sortMap.keySet())
         {
+            if(weituoStartDate!=null&&date.compareTo(weituoStartDate)>=0)
+                break;
             List<String[]> lines=sortMap.get(date);
             for(String[] line:lines)
             {
@@ -424,7 +467,7 @@ public class StockDataSource
      * @param to
      * @throws Exception 
      */
-    public void replayAccountChanges(String from,String to) throws Exception
+    protected void replayAccountChanges(String from,String to) throws Exception
     {
         Collections.sort(accountChanges);
         Calendar cld=Calendar.getInstance();
@@ -460,10 +503,9 @@ public class StockDataSource
                         else
                             currentStock.put(nextChange.code, v);
                     }
-                    else//money change
-                    {
+                    if(nextChange.moneyDelta!=null)//money change
                         currentMoney=currentMoney.add(nextChange.moneyDelta);
-                    }
+                    
                     if(nextIndex>=accountChanges.size())
                         break;
                     nextChange=accountChanges.get((nextIndex++));
@@ -520,5 +562,68 @@ public class StockDataSource
     public List<AccountStatus> getDailyProfit(String start,String end) throws Exception
     {
         return storage.getAccountDailyStatus(start,end);
+    }
+    
+    /**
+     * 读取资金流水
+     * @return 
+     * @throws Exception 
+     */
+    protected List<AccountChange> readWeituo() throws Exception
+    {
+        List<AccountChange> weituoChanges=new ArrayList();
+        CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream(WEITUO_FILE),"GBK"),'\t','"', 2);
+        String[] line;
+        int lineNum=3;
+        while((line=reader.readNext())!=null)
+        {            
+            AccountChange ac = new AccountChange();
+            ac.date = line[0].substring(1);//remove the '=' charactor
+            ac.moneyDelta = new BigDecimal(line[2]);
+            if(StringUtils.isNotBlank(line[6]))
+            {
+                ac.code = line[6].substring(2);//remove the '="' charactor
+                try
+                {
+                    ac.price = Float.parseFloat(line[9]);
+                }
+                catch (Exception e)
+                {
+                    logger.warn("Failed to parse stock price: '"+line[9]+"' at line "+lineNum,e);
+                }
+                ac.stockDelta = Integer.parseInt(line[8]);
+            }
+            weituoChanges.add(ac);
+            lineNum++;
+        }
+        reader.close();
+        return weituoChanges;
+    }
+    
+    /**
+     * 附加委托记录
+     * @throws Exception 
+     */
+    protected void applyWeituoChanges() throws Exception
+    {
+        if(wtAccountChanges.isEmpty())
+            return;
+        for(AccountChange ac:wtAccountChanges)
+        {
+            calculatedMoney=calculatedMoney.add(ac.moneyDelta);
+            if(ac.code==null)
+                inMoney=inMoney.subtract(ac.moneyDelta);
+            else
+            {
+                Integer v = stockHeld.get(ac.code);
+                int lastHeld = (v == null ? 0 : v);
+                int currentHeld = lastHeld+ac.stockDelta;
+                if (currentHeld == 0)
+                    stockHeld.remove(ac.code);
+                else
+                    stockHeld.put(ac.code, currentHeld);
+            }
+            accountChanges.add(ac);
+        }
     }
 }

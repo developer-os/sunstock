@@ -48,7 +48,7 @@ public class H2StockStorage
         createTableIfNeeded();        
         stmtSaveStockDailyQuota=con.prepareStatement("insert into "+TB_QUOTA_DAY+" values(?,?,?,?,?,?,?)");
         stmtGetStockQuota=con.prepareStatement("select day,open,close,hight,low,volume from "+TB_QUOTA_DAY+" where code=? and day>=? and day<=? order by day");
-        stmtGetMaxStatusDate=con.prepareStatement("select max(day) from "+TB_ACCOUNT_CASH);
+        stmtGetMaxStatusDate=con.prepareStatement("select max(day) from "+TB_ACCOUNT_CASH+" where day<=?");
         stmtSaveAccountStatus=con.prepareStatement("insert into "+TB_ACCOUNT_STATUS+" values(?,?,?)");
         stmtSaveStockHeld=con.prepareStatement("insert into "+TB_STOCK_HELD+" values(?,?,?,?)");
         stmtGetStockHeld=con.prepareStatement("select code,close,volume from "+TB_STOCK_HELD+" where day=?");
@@ -209,9 +209,10 @@ public class H2StockStorage
         return (TradeSummary)trades.values().toArray()[0];
     }
     
-    public String getLastAccountDate() throws Exception
+    public String getLastAccountDate(String last) throws Exception
     {
         String day=null;
+        stmtGetMaxStatusDate.setString(1, last);
         ResultSet rs=stmtGetMaxStatusDate.executeQuery();
         if(rs.next())
             day=rs.getString(1);
