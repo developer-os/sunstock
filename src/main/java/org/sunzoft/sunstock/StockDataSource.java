@@ -50,10 +50,34 @@ public class StockDataSource
     RangeSearcher capitalRange=new RangeSearcher();
     List<AccountChange> accountChanges=new ArrayList();
     
+    /**
+     * 交易回溯时使用的当前持仓
+     */
     Map<String,Stock> currentStock;
+    
+    /**
+     * 交易回溯时使用的当前现金
+     */
     BigDecimal currentMoney;
     
+    /**
+     * 保存的完整数据的最后日期
+     */
     String lastValidDate=null;
+    
+    /**
+     * 小财神数据的最后日期
+     */
+    String xcsEndDate=null;
+    
+    /**
+     * 委托数据的起始日期
+     */
+    String wtStartDate=null;
+    
+    /**
+     * 委托数据交易记录
+     */
     List<AccountChange> wtAccountChanges=null;
     
     public static void main( String[] args ) throws Exception
@@ -74,31 +98,28 @@ public class StockDataSource
     {
         storage.init();
         marketProvider.init();
-        String weituoStartDate=null;
+        
         if(new File(WEITUO_FILE).exists())
         {
             wtAccountChanges=readWeituo();
-            weituoStartDate=wtAccountChanges.get(0).date;
+            wtStartDate=wtAccountChanges.get(0).date;
         }
-        String lastFileEndDate=storage.getConfigItem(Config.LAST_FILE_DATE);
-        if(lastFileEndDate!=null&&weituoStartDate!=null&weituoStartDate.compareTo(lastFileEndDate)<0)
+        lastValidDate=storage.getConfigItem(Config.LAST_VALID_DATE);
+        if(lastValidDate!=null&&wtStartDate!=null&wtStartDate.compareTo(lastValidDate)<0)//we have better weituo data then use it
         {
             Calendar cld = Calendar.getInstance();
-            cld.setTime(df.parse(weituoStartDate));
+            cld.setTime(df.parse(wtStartDate));
             cld.add(Calendar.DATE, -1);
-            lastFileEndDate = df.format(cld.getTime());
+            lastValidDate = df.format(cld.getTime());
         }
-        String lastStatusDate=storage.getLastAccountDate(lastFileEndDate);
-        
-        lastValidDate=lastFileEndDate;
-        if(lastStatusDate.compareTo(lastFileEndDate)<0)
+        String lastStatusDate=storage.getLastAccountDate(lastValidDate);//we may not have the status data of lastValidDate
+        if(lastStatusDate.compareTo(lastValidDate)<0)
             lastValidDate=lastStatusDate;
-        logger.info("Last file date: {}. Last saved status: {}.",lastFileEndDate,lastStatusDate);
-        logger.info("Last vlidate date: {}.",lastValidDate);
+        logger.info("Last validate date: {}.",lastValidDate);
         readMoney();
         readStock();
         readTrade();
-        if(weituoStartDate!=null)
+        if(wtStartDate!=null)
             applyWeituoChanges();
     }
     
@@ -134,7 +155,7 @@ public class StockDataSource
             cld.add(Calendar.DATE, -1);
         String end=df.format(cld.getTime());        
         
-        String currentFileEndDate=accountChanges.get(accountChanges.size()-1).date;
+        String currentValidDate=accountChanges.get(accountChanges.size()-1).date;
         String start;
         if(fullMode)
         {
@@ -160,9 +181,9 @@ public class StockDataSource
             currentMoney=new BigDecimal(storage.getAccountCash(lastValidDate));
         }
         replayAccountChanges(start,end);
-        if(fullMode||currentFileEndDate.compareTo(lastValidDate)>0)
-            saveAccountStatus(currentFileEndDate);
-        storage.saveConfigItem(Config.LAST_FILE_DATE, currentFileEndDate);
+        if(fullMode||currentValidDate.compareTo(lastValidDate)>0)
+            saveAccountStatus(currentValidDate);
+        storage.saveConfigItem(Config.LAST_VALID_DATE, currentValidDate);
     }
     
     /**
@@ -279,10 +300,7 @@ public class StockDataSource
                 //calculatedMoney=calculatedMoney.add(new BigDecimal(nextLine[6]));
             }
             else
-                logger.debug(moneyRecords.size()-lineNum+1+" - Unknow operation: "+nextLine[1]);
-            /*
-            if(!calculatedMoney.equals(curMoney))
-                System.out.println(moneyRecords.size()-lineNum+1+" - "+nextLine[0]+" - Cal: "+calculatedMoney+"\tAct: "+nextLine[7]);   */    
+                logger.debug(moneyRecords.size()-lineNum+1+" - Unknow operation: "+nextLine[1]);  
             lastMoney=curMoney;
             if(!lastCalculatedMoney.equals(calculatedMoney))
             {
@@ -507,7 +525,7 @@ public class StockDataSource
                     nextChange=accountChanges.get((nextIndex++));
                 }
                 BigDecimal totalValue=currentMoney.add(getTotalStockValue(day,currentStock,nextChange));
-                storage.saveAccountStatus(day, totalValue.floatValue(), getCapitalValue(day).floatValue());
+                storage.saveAccountValues(day, totalValue.floatValue(), getCapitalValue(day).floatValue());
             }
             cld.add(Calendar.DATE, 1);
         }

@@ -220,7 +220,14 @@ public class H2StockStorage
         return day;
     }
     
-    public void saveAccountStatus(String date,float market,float capital) throws Exception
+    /**
+     * 保存账户的本金和市值
+     * @param date
+     * @param market
+     * @param capital
+     * @throws Exception 
+     */
+    public void saveAccountValues(String date,float market,float capital) throws Exception
     {
         logger.info("Saving account status: {}\t{}\t{}",date,market,capital);
         stmtSaveAccountStatus.setString(1, date);

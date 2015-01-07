@@ -12,7 +12,7 @@ package org.sunzoft.sunstock;
  */
 public class Config
 {
-    public static final String LAST_FILE_DATE="last_file_date";
+    public static final String LAST_VALID_DATE="last_file_date";
     private Config()
     {
         
