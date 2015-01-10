@@ -116,11 +116,17 @@ public class StockDataSource
         if(lastStatusDate.compareTo(lastValidDate)<0)
             lastValidDate=lastStatusDate;
         logger.info("Last validate date: {}.",lastValidDate);
-        readMoney();
-        readStock();
-        readTrade();
-        if(wtStartDate!=null)
+        if(wtStartDate==null)
+        {
+            readMoney();
+            readStock();
+            readTrade();
+        }
+        else
+        {
+            inMoney=new BigDecimal(storage.getAccountDailyStatus(lastValidDate,lastValidDate).get(0).capital);
             applyWeituoChanges();
+        }
     }
     
     /**
@@ -180,6 +186,7 @@ public class StockDataSource
             currentStock=storage.getStockHeld(lastValidDate);
             currentMoney=new BigDecimal(storage.getAccountCash(lastValidDate));
         }
+        logger.debug("Start money: {}",currentMoney);
         replayAccountChanges(start,end);
         if(fullMode||currentValidDate.compareTo(lastValidDate)>0)
             saveAccountStatus(currentValidDate);
