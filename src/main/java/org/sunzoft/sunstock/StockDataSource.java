@@ -188,8 +188,7 @@ public class StockDataSource
         }
         logger.debug("Start money: {}",currentMoney);
         replayAccountChanges(start,end);
-        if(fullMode||currentValidDate.compareTo(lastValidDate)>0)
-            saveAccountStatus(currentValidDate);
+        logger.info("Saving current validated date: {}.",currentValidDate);
         storage.saveConfigItem(Config.LAST_VALID_DATE, currentValidDate);
     }
     
@@ -533,6 +532,7 @@ public class StockDataSource
                 }
                 BigDecimal totalValue=currentMoney.add(getTotalStockValue(day,currentStock,nextChange));
                 storage.saveAccountValues(day, totalValue.floatValue(), getCapitalValue(day).floatValue());
+                saveAccountCashStocks(day);
             }
             cld.add(Calendar.DATE, 1);
         }
@@ -543,7 +543,7 @@ public class StockDataSource
      * @param day
      * @throws Exception 
      */
-    public void saveAccountStatus(String day) throws Exception
+    public void saveAccountCashStocks(String day) throws Exception
     {        
         storage.saveAccountStocks(day, currentStock);
         storage.saveAccountCash(day, currentMoney.floatValue());
