@@ -104,7 +104,9 @@ public class StockDataSource
             wtAccountChanges=readWeituo();
             wtStartDate=wtAccountChanges.get(0).date;
         }
+        logger.debug("Weituo records start date: {}",wtStartDate);
         lastValidDate=storage.getConfigItem(Config.LAST_VALID_DATE);
+        logger.debug("Last saved date: {}",lastValidDate);
         if(lastValidDate!=null&&wtStartDate!=null&wtStartDate.compareTo(lastValidDate)<0)//we have better weituo data then use it
         {
             Calendar cld = Calendar.getInstance();
@@ -113,6 +115,7 @@ public class StockDataSource
             lastValidDate = df.format(cld.getTime());
         }
         String lastStatusDate=storage.getLastAccountDate(lastValidDate);//we may not have the status data of lastValidDate
+        logger.debug("Last status date: {}",lastStatusDate);
         if(lastStatusDate.compareTo(lastValidDate)<0)
             lastValidDate=lastStatusDate;
         logger.info("Last validate date: {}.",lastValidDate);
@@ -185,6 +188,7 @@ public class StockDataSource
             }
             currentStock=storage.getStockHeld(lastValidDate);
             currentMoney=new BigDecimal(storage.getAccountCash(lastValidDate));
+            capitalRange.put(start, inMoney);
         }
         logger.debug("Start money: {}",currentMoney);
         replayAccountChanges(start,end);
